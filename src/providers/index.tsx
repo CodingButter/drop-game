@@ -6,6 +6,7 @@ import { IRCClientProvider } from "./IRCClientProvider"
 // Importing the debug utilities
 import { attachDebugHandlers } from "../debug/IRCDebugHandler"
 import { exposeMessageDebugger } from "../debug/MessageDebuggerUtils"
+import { UserEmotesProvider } from "./UserEmotesProvider"
 
 // Configuration for the IRC client from environment variables
 console.log("Initializing IRC client with config")
@@ -71,7 +72,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <BrowserRouter>
       <ThemeProvider>
         <IRCClientProvider config={ircConfig} onClientCreated={attachDebugHandlers}>
-          {children}
+          <UserEmotesProvider>{children}</UserEmotesProvider>
         </IRCClientProvider>
       </ThemeProvider>
     </BrowserRouter>

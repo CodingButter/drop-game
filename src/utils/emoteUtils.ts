@@ -114,3 +114,53 @@ export function splitMessageWithEmotes(message: string, emotes: Emote[]): Array<
 
   return result
 }
+
+/**
+ * Fetch all emotes available to the user from their emote sets
+ * @param emoteSets Array of emote set IDs
+ * @returns Promise that resolves to a map of emote code to emote ID
+ */
+export async function fetchUserEmotes(emoteSets: string[]): Promise<Record<string, string>> {
+  const emoteMap: Record<string, string> = {}
+
+  try {
+    // Process each emote set
+    await Promise.all(
+      emoteSets.map(async (setId) => {
+        try {
+          // Fetch emotes from this set using Twitch API
+          const response = await fetch(
+            `https://api.twitch.tv/helix/chat/emotes/set?emote_set_id=${setId}`,
+            {
+              headers: {
+                "Client-ID": import.meta.env.VITE_CLIENT_ID || "",
+                Authorization: `Bearer ${import.meta.env.VITE_OAUTH_TOKEN || ""}`,
+              },
+            }
+          )
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`)
+          }
+
+          const data = await response.json()
+
+          // Add emotes to our map
+          if (data.data) {
+            data.data.forEach((emote: any) => {
+              emoteMap[emote.name] = emote.id
+            })
+          }
+        } catch (err) {
+          console.error(`Error fetching emote set ${setId}:`, err)
+        }
+      })
+    )
+
+    console.log(`Loaded ${Object.keys(emoteMap).length} user emotes`)
+    return emoteMap
+  } catch (error) {
+    console.error("Error fetching user emotes:", error)
+    return {}
+  }
+}

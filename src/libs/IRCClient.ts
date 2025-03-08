@@ -47,6 +47,7 @@ interface TwitchEventMap extends Record<string, any[]> {
   userJoined: [Channel, string]
   userLeft: [Channel, string]
   notice: [{ channel: Channel; message: string }]
+  GLOBALUSERSTATE: [{ tags: Tags }]
 }
 
 /**
@@ -319,6 +320,12 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
             const channel = params[0] as Channel
             const message = params[1]
             this.emit("notice", { channel, message })
+            break
+          }
+
+          case "GLOBALUSERSTATE": {
+            // Extract and emit emote sets and other user data
+            this.emit("GLOBALUSERSTATE", { tags })
             break
           }
 

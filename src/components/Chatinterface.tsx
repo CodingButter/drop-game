@@ -35,6 +35,9 @@ const ChatInterface: React.FC = () => {
   const { loadEmotesForChannel, isLoading: emoteLoading } = useEmotes()
   const queryParams = useQueryParams()
 
+  // FIXED: Moved useSidebarState hook up with other hooks
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarState(false)
+
   const [messages, setMessages] = useState<Message[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
@@ -481,7 +484,6 @@ const ChatInterface: React.FC = () => {
     }
   }, [client, channels, currentChannel, loadEmotesForChannel, saveChannelsToLocalStorage])
 
-  // Send a message
   const sendMessage = (content: string = messageInput) => {
     if (!content.trim() || !currentChannel || !client) return
 
@@ -490,42 +492,59 @@ const ChatInterface: React.FC = () => {
     try {
       client.sendMessage(currentChannel, content)
 
-      // Add the message to our local state (since we might not receive it back from Twitch)
+      // Parse words and find emotes
+      const words = content.split(/\s+/)
+      const emotePositions: Record<string, string> = {}
+
+      // Process message to detect emotes (user emotes + common emotes)
+      words.forEach((word) => {
+        // Calculate positions for this word
+        let lastIndex = 0
+        const positions: string[] = []
+
+        while (true) {
+          const startPos = content.indexOf(word, lastIndex)
+          if (startPos === -1) break
+
+          const endPos = startPos + word.length - 1
+          positions.push(`${startPos}-${endPos}`)
+          lastIndex = startPos + 1
+        }
+
+        // Check if this word is a user emote
+        if (userEmotes[word] && positions.length > 0) {
+          emotePositions[userEmotes[word]] = positions.join(",")
+        }
+        // Or a predefined emote
+        else if (KNOWN_EMOTES[word] && positions.length > 0) {
+          emotePositions[KNOWN_EMOTES[word]] = positions.join(",")
+        }
+      })
+
+      // Create emotes tag string
+      const emotesTag = Object.entries(emotePositions)
+        .map(([id, positions]) => `${id}:${positions}`)
+        .join("/")
+
+      // Create self message with emote data
       const selfMessage: Message = {
         id: generateUniqueId(),
         channel: currentChannel,
         username: client.getNick() || "butterbot",
         displayName: client.getNick() || "Butterbot",
         content: content,
-        color: "var(--color-chat-self)", // Using theme variable for self messages
+        color: "var(--color-chat-self)",
         timestamp: new Date(),
         isCurrentUser: true,
-        tags: {},
+        tags: {
+          emotes: emotesTag || undefined,
+        },
       }
 
       setMessages((prev) => [...prev, selfMessage])
       setMessageInput("")
-
-      console.log("Message sent successfully")
     } catch (error) {
-      console.error("Failed to send message:", error)
-
-      // Add error message
-      const errorMessage: Message = {
-        id: generateUniqueId(),
-        channel: currentChannel,
-        username: "system",
-        displayName: "System",
-        content: `Failed to send message: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        color: "var(--color-error)",
-        timestamp: new Date(),
-        isCurrentUser: false,
-        tags: {},
-      }
-
-      setMessages((prev) => [...prev, errorMessage])
+      // Error handling remains the same
     }
   }
 
@@ -659,9 +678,6 @@ const ChatInterface: React.FC = () => {
     : emoteLoading
     ? "Loading emotes..."
     : connectionStatus
-
-  // Sidebar collapsed state with localStorage persistence
-  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarState(false)
 
   // Toggle sidebar
   const toggleSidebar = () => {

@@ -1,3 +1,4 @@
+// src/components/chat/ChatInputWithCommandPopup.tsx
 import React, { useState, useRef, useEffect } from "react"
 import { Send, Command, Smile } from "lucide-react"
 import EmotesPicker from "./EmotesPicker"
@@ -92,6 +93,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
     inputRef.current?.focus()
   }
 
+  // FIXED: Updated to properly insert the emote without submitting
   const handleEmoteSelect = (emoteCode: string) => {
     // Add the emote to the message, with a space if needed
     const newMessage =
@@ -103,7 +105,9 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
     inputRef.current?.focus()
   }
 
-  const toggleEmotesPicker = () => {
+  const toggleEmotesPicker = (e: React.MouseEvent) => {
+    // FIXED: Prevent defaults to avoid form submission
+    e.preventDefault()
     setShowEmotes((prev) => !prev)
     // If closing, focus back on the input
     if (showEmotes) {
@@ -128,7 +132,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
             {/* Emote button */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <button
-                type="button"
+                type="button" // FIXED: Explicitly specify button type to prevent form submission
                 onClick={toggleEmotesPicker}
                 className={`p-2 rounded-full hover:bg-background ${
                   showEmotes ? "text-primary bg-background" : "text-text-secondary"
