@@ -8,9 +8,12 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "git:push": "git push",
-    "git:pull": "git pull",
-    "git:commit": "git add --all && git commit -m"
+    "gp": "git push",
+    "ga": "git add --all",
+    "gac": "pnpm ga && git commit",
+    "gacp": "pnpm gac && git push",
+    "gacm": "pnpm gac && git commit --amend --no-edit",
+    "gacpm": "pnpm gacm && pnpm gp"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.10",
