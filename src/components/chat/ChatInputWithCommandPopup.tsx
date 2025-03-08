@@ -173,7 +173,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
             <EmotesPicker
               onClose={() => setShowEmotes(false)}
               onSelectEmote={handleEmoteSelect}
-              channelName={channelName}
+              channelName={channelName || null}
             />
           )}
         </div>
