@@ -7,8 +7,9 @@ import { useEmotes } from "../hooks/useEmotes"
 // Components
 import ChannelList from "./chat/ChannelList"
 import MessageList from "./chat/MessageList"
-import MessageInput from "./chat/MessageInput"
 import Header from "./chat/Header"
+import ChatInputWithCommandPopup from "./chat/ChatInputWithCommandPopup"
+import UserMessagesPopup from "./chat/UserMessagesPopup"
 
 const ChatInterface: React.FC = () => {
   const client = useIRCClient()
@@ -22,8 +23,12 @@ const ChatInterface: React.FC = () => {
   const [newChannelInput, setNewChannelInput] = useState("")
   const [connectionStatus, setConnectionStatus] = useState("Connecting...")
 
-  // Track channel IDs for emote loading
-  const [_, setChannelIds] = useState<Record<string, string>>({})
+  // User popup state
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [showUserPopup, setShowUserPopup] = useState(false)
+
+  // Track channel IDs for emote loading (using underscore to indicate it's used indirectly)
+  const [_channelIds, setChannelIds] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!client) {
@@ -272,13 +277,13 @@ const ChatInterface: React.FC = () => {
   }, [client, channels, currentChannel, loadEmotesForChannel])
 
   // Send a message
-  const sendMessage = () => {
-    if (!messageInput.trim() || !currentChannel || !client) return
+  const sendMessage = (content: string = messageInput) => {
+    if (!content.trim() || !currentChannel || !client) return
 
-    console.log(`Attempting to send message to ${currentChannel}: ${messageInput}`)
+    console.log(`Attempting to send message to ${currentChannel}: ${content}`)
 
     try {
-      client.sendMessage(currentChannel, messageInput)
+      client.sendMessage(currentChannel, content)
 
       // Add the message to our local state (since we might not receive it back from Twitch)
       const selfMessage: Message = {
@@ -286,7 +291,7 @@ const ChatInterface: React.FC = () => {
         channel: currentChannel,
         username: client.getNick() || "butterbot",
         displayName: client.getNick() || "Butterbot",
-        content: messageInput,
+        content: content,
         color: "#FF00FF", // Bright color for self messages
         timestamp: new Date(),
         isCurrentUser: true,
@@ -363,6 +368,36 @@ const ChatInterface: React.FC = () => {
     }
   }
 
+  // Handle username click to show user popup
+  const handleUsernameClick = (username: string) => {
+    setSelectedUser(username)
+    setShowUserPopup(true)
+  }
+
+  // Close user popup
+  const handleCloseUserPopup = () => {
+    setShowUserPopup(false)
+    setSelectedUser(null)
+  }
+
+  // Convert messages to the format expected by UserMessagesPopup
+  const formatMessagesForUserPopup = (username: string) => {
+    if (!username || !currentChannel) return []
+
+    return messages
+      .filter(
+        (msg) =>
+          msg.channel === currentChannel && msg.username === username && msg.username !== "system"
+      )
+      .map((msg) => ({
+        id: msg.id,
+        nickname: msg.username,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        isAction: msg.content.startsWith("\u0001ACTION"), // Check for /me messages
+      }))
+  }
+
   // Show loading state if client is not yet available
   if (!client) {
     return (
@@ -401,18 +436,26 @@ const ChatInterface: React.FC = () => {
         {/* Main chat area */}
         <main className="flex-1 flex flex-col">
           {/* Messages area */}
-          <MessageList messages={messages} currentChannel={currentChannel} />
-
-          {/* Message input */}
-          <MessageInput
-            messageInput={messageInput}
-            setMessageInput={setMessageInput}
-            sendMessage={sendMessage}
-            isConnected={isConnected}
+          <MessageList
+            messages={messages}
             currentChannel={currentChannel}
+            onUsernameClick={handleUsernameClick}
           />
+
+          {/* Message input with command popup */}
+          <ChatInputWithCommandPopup channelName={currentChannel} onSendMessage={sendMessage} />
         </main>
       </div>
+
+      {/* User messages popup */}
+      {showUserPopup && selectedUser && (
+        <UserMessagesPopup
+          username={selectedUser}
+          messages={formatMessagesForUserPopup(selectedUser)}
+          onClose={handleCloseUserPopup}
+          channelName={currentChannel || "#channel"}
+        />
+      )}
     </div>
   )
 }

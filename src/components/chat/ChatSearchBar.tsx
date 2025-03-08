@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react"
 import { Search, X, Filter } from "lucide-react"
 
-interface ChatSearchBarProps {
-  onSearch: (query: string) => void
-  onFilterChange: (filters: ChatFilters) => void
-}
-
 export interface ChatFilters {
   showJoinLeave: boolean
   showTimestamps: boolean
   highlightMentions: boolean
   onlyFromUser: string | null
+}
+
+interface ChatSearchBarProps {
+  onSearch: (query: string) => void
+  onFilterChange: (filters: ChatFilters) => void
 }
 
 const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onSearch, onFilterChange }) => {
@@ -53,30 +53,33 @@ const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onSearch, onFilterChange 
     <div className="bg-gray-800 border-b border-gray-700 p-2">
       <div className="flex items-center">
         <div className="relative flex-grow">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search in chat..."
-            className="w-full bg-gray-700 text-white px-3 py-2 pr-8 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex">
-            {searchQuery && (
+          <div className="relative flex items-center">
+            <Search size={16} className="absolute left-3 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search in chat..."
+              className="w-full bg-gray-700 text-white pl-9 pr-8 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+            />
+            <div className="absolute right-2 flex">
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="text-gray-400 hover:text-white mr-1"
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
               <button
-                onClick={handleClearSearch}
-                className="text-gray-400 hover:text-white mr-1"
-                aria-label="Clear search"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`text-gray-400 hover:text-white ${showFilters ? "text-purple-400" : ""}`}
+                aria-label="Show filters"
               >
-                <X size={16} />
+                <Filter size={16} />
               </button>
-            )}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`text-gray-400 hover:text-white ${showFilters ? "text-blue-400" : ""}`}
-              aria-label="Show filters"
-            >
-              <Filter size={16} />
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -90,7 +93,7 @@ const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onSearch, onFilterChange 
                 type="checkbox"
                 checked={filters.showJoinLeave}
                 onChange={(e) => updateFilter("showJoinLeave", e.target.checked)}
-                className="mr-2"
+                className="mr-2 rounded bg-gray-600 border-gray-500 text-purple-500 focus:ring-purple-500"
               />
               Show join/leave messages
             </label>
@@ -99,7 +102,7 @@ const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onSearch, onFilterChange 
                 type="checkbox"
                 checked={filters.showTimestamps}
                 onChange={(e) => updateFilter("showTimestamps", e.target.checked)}
-                className="mr-2"
+                className="mr-2 rounded bg-gray-600 border-gray-500 text-purple-500 focus:ring-purple-500"
               />
               Show timestamps
             </label>
@@ -108,10 +111,25 @@ const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onSearch, onFilterChange 
                 type="checkbox"
                 checked={filters.highlightMentions}
                 onChange={(e) => updateFilter("highlightMentions", e.target.checked)}
-                className="mr-2"
+                className="mr-2 rounded bg-gray-600 border-gray-500 text-purple-500 focus:ring-purple-500"
               />
               Highlight mentions
             </label>
+
+            {filters.onlyFromUser && (
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-600">
+                <span className="text-sm text-gray-300">
+                  Showing messages from:{" "}
+                  <span className="text-purple-400">{filters.onlyFromUser}</span>
+                </span>
+                <button
+                  onClick={() => updateFilter("onlyFromUser", null)}
+                  className="px-2 py-1 bg-gray-600 text-xs rounded hover:bg-gray-500"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

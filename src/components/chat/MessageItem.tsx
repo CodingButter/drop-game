@@ -5,9 +5,17 @@ import { findThirdPartyEmotes } from "../../utils/thirdPartyEmotes"
 
 interface MessageItemProps {
   message: Message
+  onUsernameClick?: (username: string) => void
+  showTimestamp?: boolean
+  highlightMentions?: boolean
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = ({
+  message,
+  onUsernameClick,
+  showTimestamp = true,
+  highlightMentions = true,
+}) => {
   // Format timestamps in a user-friendly way
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -56,6 +64,22 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       </div>
     )
   }
+
+  // Check if message contains any mentions of the current user
+  const checkForMentions = () => {
+    if (!highlightMentions) return false
+
+    // Get the current user's nickname from the IRC client
+    const client = (window as any).ircClient
+    if (!client) return false
+
+    const currentNick = client.getNick ? client.getNick().toLowerCase() : ""
+    if (!currentNick) return false
+
+    return message.content.toLowerCase().includes(currentNick)
+  }
+
+  const isMentioned = checkForMentions()
 
   // Parse and render message content with emotes
   const renderMessageContent = () => {
@@ -159,10 +183,19 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     }
   }
 
+  // Handle username click
+  const handleUsernameClick = () => {
+    if (onUsernameClick && message.username !== "system") {
+      onUsernameClick(message.username)
+    }
+  }
+
   return (
     <div
       className={`p-3 rounded-lg transition-all ${
-        message.isCurrentUser
+        isMentioned
+          ? "bg-purple-900/40 border border-purple-500/40"
+          : message.isCurrentUser
           ? "bg-purple-900/30 border border-purple-500/30"
           : message.username === "system"
           ? "bg-gray-800/50 border border-gray-700"
@@ -174,7 +207,14 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           {message.username !== "system" && (
             <>
               {message.badges && renderBadges(message.badges)}
-              <span className="font-semibold truncate" style={{ color: message.color }}>
+              <span
+                className={`font-semibold truncate ${
+                  onUsernameClick ? "cursor-pointer hover:underline" : ""
+                }`}
+                style={{ color: message.color }}
+                onClick={handleUsernameClick}
+                title={onUsernameClick ? `Click to filter by ${message.displayName}` : undefined}
+              >
                 {message.displayName}
               </span>
             </>
@@ -199,9 +239,11 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-          {formatTime(message.timestamp)}
-        </span>
+        {showTimestamp && (
+          <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+            {formatTime(message.timestamp)}
+          </span>
+        )}
       </div>
       {renderMessageContent()}
     </div>
