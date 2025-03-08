@@ -4,6 +4,7 @@ import { useIRCClient } from "../hooks/useIRCClient"
 import { Message } from "../../types/Message"
 import { generateUniqueId } from "../utils/messageUtils"
 import { useEmotes } from "../hooks/useEmotes"
+import { useUserEmotes } from "../hooks/useUserEmotes" // Added import
 import { useLocation } from "react-router-dom"
 import { fetchUsersData } from "../utils/twitchApiUtils"
 import { useSidebarState } from "../hooks/useSidebarState"
@@ -24,6 +25,20 @@ interface UserFetch {
   messageId: string
 }
 
+// Common Twitch emotes - Added KNOWN_EMOTES definition
+const KNOWN_EMOTES: Record<string, string> = {
+  Kappa: "25",
+  PogChamp: "1904",
+  Kreygasm: "41",
+  HeyGuys: "30259",
+  LUL: "114836",
+  BibleThump: "86",
+  WutFace: "28087",
+  TriHard: "81103",
+  ResidentSleeper: "245",
+  KappaPride: "58765",
+}
+
 // Helper function to parse query params
 const useQueryParams = () => {
   const { search } = useLocation()
@@ -33,6 +48,7 @@ const useQueryParams = () => {
 const ChatInterface: React.FC = () => {
   const client = useIRCClient()
   const { loadEmotesForChannel, isLoading: emoteLoading } = useEmotes()
+  const { userEmotes } = useUserEmotes() // Added useUserEmotes hook
   const queryParams = useQueryParams()
 
   // FIXED: Moved useSidebarState hook up with other hooks

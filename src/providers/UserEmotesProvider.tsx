@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { UserEmotesContext } from "../hooks/useUserEmotes"
 import { fetchUserEmotes } from "../utils/emoteUtils"
 import { useIRCClient } from "../hooks/useIRCClient"
+
 // Provider component
 export const UserEmotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userEmotes, setUserEmotes] = useState<Record<string, string>>({})
@@ -11,13 +12,13 @@ export const UserEmotesProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (!client) return
 
-    const handleGlobalUserState = async (data: any) => {
-      const { emoteSets } = data
+    const handleGlobalUserState = async (data: { emoteSets: string[]; tags: any }) => {
+      console.log("globalUserState received:", data)
 
-      if (emoteSets && emoteSets.length > 0) {
+      if (data.emoteSets && data.emoteSets.length > 0) {
         setIsLoading(true)
         try {
-          const emotes = await fetchUserEmotes(emoteSets)
+          const emotes = await fetchUserEmotes(data.emoteSets)
           setUserEmotes(emotes)
         } catch (error) {
           console.error("Failed to load user emotes:", error)
@@ -27,6 +28,7 @@ export const UserEmotesProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
+    // Listen for the lowercase version of the event that has parsed emoteSets
     client.on("globalUserState", handleGlobalUserState)
 
     return () => {

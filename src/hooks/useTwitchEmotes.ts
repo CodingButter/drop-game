@@ -8,7 +8,7 @@ export interface TwitchEmote {
   setId?: string
 }
 
-export interface DebugInfo {
+interface DebugInfo {
   receivedGlobalUserState: boolean
   emoteSetString: string
   apiCalled: boolean
@@ -27,7 +27,7 @@ export function useTwitchEmotes() {
   })
   const client = useIRCClient()
 
-  // Use useMemo to prevent the array from being recreated on every render
+  // Common Twitch emotes as fallback - now using useMemo
   const commonEmotes = useMemo<TwitchEmote[]>(
     () => [
       { id: "25", code: "Kappa" },
@@ -47,31 +47,29 @@ export function useTwitchEmotes() {
   useEffect(() => {
     if (!client) return
 
-    console.log("Setting up GLOBALUSERSTATE listener")
+    console.log("Setting up globalUserState listener")
 
-    // Listen for GLOBALUSERSTATE which contains emote-sets
-    const handleGlobalUserState = (data: any) => {
-      console.log("Received GLOBALUSERSTATE event:", data)
+    // Listen for the lowercase globalUserState (more convenient format)
+    const handleGlobalUserState = (data: { emoteSets: string[]; tags: any }) => {
+      console.log("Received globalUserState event:", data)
 
-      const emoteSetStr = data.tags?.["emote-sets"] || ""
+      // Update debug info
       setDebugInfo((prev) => ({
         ...prev,
         receivedGlobalUserState: true,
-        emoteSetString: emoteSetStr,
+        emoteSetString: data.emoteSets.join(","),
       }))
 
-      const sets = emoteSetStr.split(",").filter(Boolean)
-
-      if (sets.length > 0) {
-        console.log("Emote sets found:", sets)
-        setEmoteSets(sets)
+      if (data.emoteSets.length > 0) {
+        console.log("Emote sets found:", data.emoteSets)
+        setEmoteSets(data.emoteSets)
       }
     }
 
-    client.on("GLOBALUSERSTATE", handleGlobalUserState)
+    client.on("globalUserState", handleGlobalUserState)
 
     return () => {
-      client.off("GLOBALUSERSTATE", handleGlobalUserState)
+      client.off("globalUserState", handleGlobalUserState)
     }
   }, [client])
 
@@ -84,6 +82,10 @@ export function useTwitchEmotes() {
 
     const fetchEmotesForSets = async () => {
       setIsLoading(true)
+      setDebugInfo((prev) => ({
+        ...prev,
+        apiCalled: true,
+      }))
 
       try {
         const clientId = import.meta.env.VITE_CLIENT_ID
@@ -91,6 +93,10 @@ export function useTwitchEmotes() {
 
         if (!clientId || !oauthToken) {
           console.warn("Missing Client ID or OAuth token for Twitch API")
+          setDebugInfo((prev) => ({
+            ...prev,
+            apiError: "Missing Client ID or OAuth token",
+          }))
           setEmotes(commonEmotes)
           return
         }
@@ -100,11 +106,6 @@ export function useTwitchEmotes() {
           oauthToken: oauthToken ? "PRESENT" : "MISSING",
           sets: emoteSets,
         })
-
-        setDebugInfo((prev) => ({
-          ...prev,
-          apiCalled: true,
-        }))
 
         // Fetch emotes for each set
         const fetchedEmotes: TwitchEmote[] = []
@@ -145,11 +146,10 @@ export function useTwitchEmotes() {
               })
             }
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error)
             console.error(`Error fetching emote set ${setId}:`, error)
             setDebugInfo((prev) => ({
               ...prev,
-              apiError: `Error fetching emote set ${setId}: ${errorMessage}`,
+              apiError: `Error fetching emote set ${setId}: ${error}`,
             }))
           }
         }
@@ -162,11 +162,10 @@ export function useTwitchEmotes() {
           setEmotes(commonEmotes)
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
         console.error("Error fetching user emotes:", error)
         setDebugInfo((prev) => ({
           ...prev,
-          apiError: `Error fetching user emotes: ${errorMessage}`,
+          apiError: `Error fetching user emotes: ${error}`,
         }))
         setEmotes(commonEmotes)
       } finally {

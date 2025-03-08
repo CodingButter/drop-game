@@ -20,6 +20,7 @@ type Tags = {
   turbo?: string
   "user-id"?: string
   "user-type"?: string
+  "emote-sets"?: string
   [key: string]: string | undefined
 }
 
@@ -48,6 +49,8 @@ interface TwitchEventMap extends Record<string, any[]> {
   userLeft: [Channel, string]
   notice: [{ channel: Channel; message: string }]
   GLOBALUSERSTATE: [{ tags: Tags }]
+  globalUserState: [{ emoteSets: string[]; tags: Tags }] // Added lowercase version with emoteSets data
+  roomstate: [Channel, Tags]
 }
 
 /**
@@ -324,8 +327,27 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
           }
 
           case "GLOBALUSERSTATE": {
-            // Extract and emit emote sets and other user data
+            // Extract emote sets from tags and parse them
+            const emoteSetStr = tags["emote-sets"] || ""
+            const emoteSets = emoteSetStr.split(",").filter(Boolean)
+
+            console.log("GLOBALUSERSTATE received with emote sets:", emoteSetStr)
+
+            // Emit both capitalized and lowercase variants for compatibility
             this.emit("GLOBALUSERSTATE", { tags })
+
+            // Emit lowercase version with parsed emoteSets for easier consumption
+            this.emit("globalUserState", {
+              emoteSets,
+              tags,
+            })
+            break
+          }
+
+          case "ROOMSTATE": {
+            // Room state - params[0] is channel
+            const channel = params[0] as Channel
+            this.emit("roomstate", channel, tags)
             break
           }
 
