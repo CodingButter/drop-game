@@ -1,5 +1,5 @@
-@import "./dark.css";
-@import "./light.css";
-@import "./purple.css";
-@import "./blue.css";
-@import "./green.css";
+@import "./custom/dark.css";
+@import "./custom/light.css";
+@import "./custom/purple.css";
+@import "./custom/blue.css";
+@import "./custom/green.css";

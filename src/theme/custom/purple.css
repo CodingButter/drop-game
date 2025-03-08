@@ -1,3 +1,9 @@
+@layer base {
+    :root {
+        --icon-purple: oklch(0.627 0.265 303.9);
+    }
+}
+
 .theme-purple {
     --color-primary: oklch(0.627 0.265 303.9);
     /* purple-500 */

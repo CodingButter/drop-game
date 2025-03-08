@@ -1,20 +1,27 @@
-const themes = {
-  default_theme: "dark",
-  base_themes: {
-    dark: true,
-    light: true,
+import { Sun, Moon, Palette } from "lucide-react"
+
+export type ThemeMode = "light" | "dark" | "purple" | "blue" | "green"
+export type BaseTheme = "light" | "dark"
+
+export const themes: { value: ThemeMode; label: string; icon?: React.ReactNode }[] = [
+  { value: "light", label: "Light", icon: <Sun size={16} /> },
+  { value: "dark", label: "Dark", icon: <Moon size={16} /> },
+  {
+    value: "purple",
+    label: "Purple",
+    icon: <Palette className="text-[var(--icon-purple)]" size={16} />,
   },
-  theme_modes: {
-    dark: true,
-    light: true,
-    purple: true,
-    blue: true,
-    green: true,
+  {
+    value: "blue",
+    label: "Blue",
+    icon: <Palette className="text-[var(--icon-blue)]" size={16} />,
   },
-}
-export default themes
-export type ThemeMode = keyof typeof themes.theme_modes
-export type BaseTheme = typeof themes.base_themes
+  {
+    value: "green",
+    label: "Green",
+    icon: <Palette className="text-[var(--icon-green)]" size={16} />,
+  },
+]
 
 /**
  * Theme configuration structure
