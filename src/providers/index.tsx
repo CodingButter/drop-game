@@ -1,3 +1,7 @@
+// Import any global providers (if you have them)
+
+import { BrowserRouter } from "react-router-dom"
+import { ThemeProvider } from "./ThemeProvider"
 import { IRCClientProvider } from "./IRCClientProvider"
 // Importing the debug utilities
 import { attachDebugHandlers } from "../debug/IRCDebugHandler"
@@ -64,8 +68,12 @@ const ircConfig = {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <IRCClientProvider config={ircConfig} onClientCreated={attachDebugHandlers}>
-      {children}
-    </IRCClientProvider>
+    <BrowserRouter>
+      <ThemeProvider>
+        <IRCClientProvider config={ircConfig} onClientCreated={attachDebugHandlers}>
+          {children}
+        </IRCClientProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   )
 }
