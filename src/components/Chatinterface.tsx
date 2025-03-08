@@ -500,12 +500,14 @@ const ChatInterface: React.FC = () => {
     }
   }, [client, channels, currentChannel, loadEmotesForChannel, saveChannelsToLocalStorage])
 
+  // Update the sendMessage function in ChatInterface.tsx
   const sendMessage = (content: string = messageInput) => {
     if (!content.trim() || !currentChannel || !client) return
 
     console.log(`Attempting to send message to ${currentChannel}: ${content}`)
 
     try {
+      // First, send the message to Twitch
       client.sendMessage(currentChannel, content)
 
       // Parse words and find emotes
@@ -542,9 +544,12 @@ const ChatInterface: React.FC = () => {
         .map(([id, positions]) => `${id}:${positions}`)
         .join("/")
 
+      // Important: Create a new unique ID for this message
+      const messageId = generateUniqueId()
+
       // Create self message with emote data
       const selfMessage: Message = {
-        id: generateUniqueId(),
+        id: messageId,
         channel: currentChannel,
         username: client.getNick() || "butterbot",
         displayName: client.getNick() || "Butterbot",
@@ -557,10 +562,32 @@ const ChatInterface: React.FC = () => {
         },
       }
 
+      // Update state with the new message
       setMessages((prev) => [...prev, selfMessage])
+
+      // Clear input field immediately
       setMessageInput("")
+
+      console.log("Message sent and added to UI:", selfMessage)
     } catch (error) {
-      // Error handling remains the same
+      console.error("Error sending message:", error)
+
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: generateUniqueId(),
+        channel: currentChannel,
+        username: "system",
+        displayName: "System",
+        content: `Failed to send message: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        color: "var(--color-error)",
+        timestamp: new Date(),
+        isCurrentUser: false,
+        tags: {},
+      }
+
+      setMessages((prev) => [...prev, errorMessage])
     }
   }
 

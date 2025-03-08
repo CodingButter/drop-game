@@ -30,6 +30,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
   const [showCommands, setShowCommands] = useState(false)
   const [showEmotes, setShowEmotes] = useState(false)
   const [filteredCommands, setFilteredCommands] = useState(TWITCH_COMMANDS)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const commandsRef = useRef<HTMLDivElement>(null)
 
@@ -65,25 +66,39 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
     }
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim()) {
-      // Call the parent handler if provided, otherwise use IRC client directly
-      if (onSendMessage) {
-        onSendMessage(message)
-      } else {
-        // Use the global IRC client from window (added by the debug utility)
-        const client = (window as any).ircClient
-        if (client && channelName) {
-          try {
-            client.sendMessage(channelName, message)
-            console.log(`Sent message to ${channelName}: ${message}`)
-          } catch (error) {
-            console.error(`Failed to send message to ${channelName}:`, error)
+
+    if (message.trim() && !isSubmitting) {
+      setIsSubmitting(true)
+
+      try {
+        // Call the parent handler if provided, otherwise use IRC client directly
+        if (onSendMessage) {
+          onSendMessage(message)
+        } else {
+          // Use the global IRC client from window (added by the debug utility)
+          const client = (window as any).ircClient
+          if (client && channelName) {
+            try {
+              client.sendMessage(channelName, message)
+              console.log(`Sent message to ${channelName}: ${message}`)
+            } catch (error) {
+              console.error(`Failed to send message to ${channelName}:`, error)
+            }
           }
         }
+
+        // Clear input immediately after sending
+        setMessage("")
+      } catch (error) {
+        console.error("Error sending message:", error)
+      } finally {
+        // Reset submitting state after a short delay to prevent double-sends
+        setTimeout(() => {
+          setIsSubmitting(false)
+        }, 500)
       }
-      setMessage("")
     }
   }
 
@@ -93,7 +108,6 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
     inputRef.current?.focus()
   }
 
-  // FIXED: Updated to properly insert the emote without submitting
   const handleEmoteSelect = (emoteCode: string) => {
     // Add the emote to the message, with a space if needed
     const newMessage =
@@ -106,7 +120,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
   }
 
   const toggleEmotesPicker = (e: React.MouseEvent) => {
-    // FIXED: Prevent defaults to avoid form submission
+    // Prevent defaults to avoid form submission
     e.preventDefault()
     setShowEmotes((prev) => !prev)
     // If closing, focus back on the input
@@ -127,17 +141,19 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
               onChange={(e) => setMessage(e.target.value)}
               placeholder={`Message ${channelName || "chat"}`}
               className="w-full pl-4 pr-12 py-3 bg-background-tertiary rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+              disabled={isSubmitting}
             />
 
             {/* Emote button */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <button
-                type="button" // FIXED: Explicitly specify button type to prevent form submission
+                type="button"
                 onClick={toggleEmotesPicker}
                 className={`p-2 rounded-full hover:bg-background ${
                   showEmotes ? "text-primary bg-background" : "text-text-secondary"
                 }`}
                 aria-label="Insert Emote"
+                disabled={isSubmitting}
               >
                 <Smile size={20} />
               </button>
@@ -179,10 +195,14 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
         </div>
         <button
           type="submit"
-          disabled={!message.trim()}
+          disabled={!message.trim() || isSubmitting}
           className="px-6 py-3 bg-primary hover:bg-primary-dark rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          <Send size={18} className="mr-2" />
+          {isSubmitting ? (
+            <span className="inline-block w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></span>
+          ) : (
+            <Send size={18} className="mr-2" />
+          )}
           Send
         </button>
       </form>

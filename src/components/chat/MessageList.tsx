@@ -11,6 +11,7 @@ interface MessageListProps {
 
 const MessageList: React.FC<MessageListProps> = ({ messages, currentChannel, onUsernameClick }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageListRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<ChatFilters>({
     showJoinLeave: true,
@@ -19,6 +20,8 @@ const MessageList: React.FC<MessageListProps> = ({ messages, currentChannel, onU
     onlyFromUser: null,
   })
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([])
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
+  const [lastScrollPosition, setLastScrollPosition] = useState(0)
 
   // Filter messages for the current channel
   useEffect(() => {
@@ -56,17 +59,34 @@ const MessageList: React.FC<MessageListProps> = ({ messages, currentChannel, onU
     setFilteredMessages(result)
   }, [messages, currentChannel, searchQuery, filters])
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
+  // Handle scroll to detect if user has scrolled up
   useEffect(() => {
-    // Only auto-scroll if we're not filtering or searching
-    if (!searchQuery && !filters.onlyFromUser) {
-      scrollToBottom()
+    const handleScroll = () => {
+      if (!messageListRef.current) return
+
+      const { scrollTop, scrollHeight, clientHeight } = messageListRef.current
+      const scrolledToBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50
+
+      setIsAutoScrollEnabled(scrolledToBottom)
+      setLastScrollPosition(scrollTop)
     }
-  }, [filteredMessages, searchQuery, filters.onlyFromUser])
+
+    const messageList = messageListRef.current
+    if (messageList) {
+      messageList.addEventListener("scroll", handleScroll)
+      return () => messageList.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  // Scroll to bottom when messages change, but only if autoscroll is enabled
+  useEffect(() => {
+    if (isAutoScrollEnabled && !searchQuery && !filters.onlyFromUser) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    } else if (messageListRef.current) {
+      // If autoscroll is disabled, maintain scroll position
+      messageListRef.current.scrollTop = lastScrollPosition
+    }
+  }, [filteredMessages, isAutoScrollEnabled, searchQuery, filters.onlyFromUser, lastScrollPosition])
 
   // Handle search query changes
   const handleSearch = useCallback((query: string) => {
@@ -143,7 +163,10 @@ const MessageList: React.FC<MessageListProps> = ({ messages, currentChannel, onU
       <ChatSearchBar onSearch={handleSearch} onFilterChange={handleFilterChange} />
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary scrollbar-track-background-tertiary">
+      <div
+        ref={messageListRef}
+        className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-primary scrollbar-track-background-tertiary"
+      >
         {/* Active filter indicator */}
         {(searchQuery || filters.onlyFromUser) && (
           <div className="mb-4 p-2 bg-surface rounded-lg border border-border text-text-secondary text-sm">

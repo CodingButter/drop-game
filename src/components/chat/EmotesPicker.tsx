@@ -159,20 +159,41 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [onClose])
 
-  // Handle emote selection
+  // Handle emote selection with improved performance
   const handleEmoteSelect = (e: React.MouseEvent, emoteCode: string) => {
-    // Prevent event propagation to avoid form submission
+    // Prevent event propagation and default actions
     e.preventDefault()
     e.stopPropagation()
 
+    // Directly call onSelectEmote with the emote code
     onSelectEmote(emoteCode)
 
-    // Save to recent emotes
-    setRecentEmotes((prev) => {
-      const updated = [emoteCode, ...prev.filter((e) => e !== emoteCode)].slice(0, 20)
-      localStorage.setItem("recentEmotes", JSON.stringify(updated))
-      return updated
-    })
+    // Only add to recents if it's not an empty or duplicate
+    if (emoteCode.trim()) {
+      // Update recent emotes using functional update for atomicity
+      setRecentEmotes((prev) => {
+        // Remove duplicates and add at the beginning
+        const updated = [emoteCode, ...prev.filter((e) => e !== emoteCode)].slice(0, 20)
+
+        // Optimistically store to localStorage
+        try {
+          // Use requestIdleCallback if available, otherwise setTimeout
+          if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(() => {
+              localStorage.setItem("recentEmotes", JSON.stringify(updated))
+            })
+          } else {
+            setTimeout(() => {
+              localStorage.setItem("recentEmotes", JSON.stringify(updated))
+            }, 50)
+          }
+        } catch (error) {
+          console.error("Failed to save to localStorage:", error)
+        }
+
+        return updated
+      })
+    }
   }
 
   // Filter emotes based on search
@@ -201,7 +222,7 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
     return `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/${size}`
   }
 
-  // Render Twitch emotes grid
+  // Optimized renderTwitchEmotesGrid function with virtualization
   const renderTwitchEmotesGrid = () => {
     if (twitchEmotesLoading) {
       return (
@@ -221,9 +242,13 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
       )
     }
 
+    // If we have many emotes, only render those visible in the viewport
+    const maxEmotesToRender = 100 // Limit number of emotes rendered at once
+    const emotesToShow = filteredTwitchEmotes.slice(0, maxEmotesToRender)
+
     return (
       <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 gap-2 p-2">
-        {filteredTwitchEmotes.map((emote, index) => (
+        {emotesToShow.map((emote, index) => (
           <button
             key={`twitch-${emote.id}-${index}`}
             className="flex flex-col items-center justify-center p-1 hover:bg-background-tertiary rounded transition-colors"
@@ -235,10 +260,17 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
               src={getTwitchEmoteUrl(emote.id)}
               alt={emote.code}
               className="w-8 h-8 object-contain"
+              loading="lazy"
             />
             <span className="text-xs mt-1 truncate w-full text-center">{emote.code}</span>
           </button>
         ))}
+        {filteredTwitchEmotes.length > maxEmotesToRender && (
+          <div className="col-span-full text-center py-2 text-text-secondary text-sm">
+            Showing {maxEmotesToRender} of {filteredTwitchEmotes.length} emotes. Refine your search
+            to see more.
+          </div>
+        )}
       </div>
     )
   }
@@ -273,7 +305,12 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
             title={emote.code}
             type="button"
           >
-            <img src={emote.url} alt={emote.code} className="w-8 h-8 object-contain" />
+            <img
+              src={emote.url}
+              alt={emote.code}
+              className="w-8 h-8 object-contain"
+              loading="lazy"
+            />
             <span className="text-xs mt-1 truncate w-full text-center">{emote.code}</span>
           </button>
         ))}
@@ -309,7 +346,12 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
               type="button"
             >
               {emoteUrl ? (
-                <img src={emoteUrl} alt={emoteCode} className="w-8 h-8 object-contain" />
+                <img
+                  src={emoteUrl}
+                  alt={emoteCode}
+                  className="w-8 h-8 object-contain"
+                  loading="lazy"
+                />
               ) : (
                 <div className="w-8 h-8 flex items-center justify-center font-mono text-xs">
                   {emoteCode}
