@@ -1,4 +1,6 @@
 // types/Message.ts
+export type Channel = `#${string}`
+
 export type Message = {
   id: string
   channel: string

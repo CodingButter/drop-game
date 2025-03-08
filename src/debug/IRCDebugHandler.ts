@@ -3,7 +3,7 @@
  * Uses only the public API of IRCClient.
  */
 
-import IRCClient from "./IRCClient"
+import IRCClient from "../libs/IRCClient"
 
 /**
  * Attaches debug listeners to an IRCClient instance to help diagnose connection issues.

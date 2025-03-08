@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useTheme } from "../hooks/useTheme"
 
-import { themes, ThemeMode } from "../../types/Themes"
+import { themes } from "../../types/Themes"
 interface ThemeSwitcherProps {
   className?: string
 }

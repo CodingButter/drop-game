@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useIRCClient } from "../hooks/useIRCClient"
-import { Message, Channel } from "../../types/Message"
+import { Message } from "../../types/Message"
 import { generateUniqueId } from "../utils/messageUtils"
 import { useEmotes } from "../hooks/useEmotes"
 import { useLocation } from "react-router-dom"
@@ -12,6 +12,15 @@ import MessageList from "./chat/MessageList"
 import Header from "./chat/Header"
 import ChatInputWithCommandPopup from "./chat/ChatInputWithCommandPopup"
 import UserMessagesPopup from "./chat/UserMessagesPopup"
+
+// Define Channel type here if it's not imported
+type Channel = `#${string}`
+
+// Define UserFetch interface for the pending fetches
+interface UserFetch {
+  userId: string
+  messageId: string
+}
 
 // Helper function to parse query params
 const useQueryParams = () => {
@@ -39,11 +48,18 @@ const ChatInterface: React.FC = () => {
   // Track channel IDs for emote loading (using underscore to indicate it's used indirectly)
   const [_channelIds, setChannelIds] = useState<Record<string, string>>({})
 
-  // Batching system for profile image fetches
-  const [pendingUserFetches, setPendingUserFetches] = useState<
-    { userId: string; messageId: string }[]
-  >([])
+  // Batching system for profile image fetches - fixing the type here
+  const [pendingUserFetches, setPendingUserFetches] = useState<UserFetch[]>([])
   const userFetchTimerRef = useRef<number | null>(null)
+
+  // Save channels to localStorage
+  const saveChannelsToLocalStorage = useCallback((channelList: Channel[]) => {
+    try {
+      localStorage.setItem("twitchJoinedChannels", JSON.stringify(channelList))
+    } catch (error) {
+      console.error("Failed to save channels to localStorage:", error)
+    }
+  }, [])
 
   // Handle batched profile image fetches
   useEffect(() => {
@@ -102,32 +118,46 @@ const ChatInterface: React.FC = () => {
   // Parse channels from query params when client is connected
   useEffect(() => {
     if (client && isConnected) {
+      // First try to get channels from URL
       const channelsParam = queryParams.get("channels")
+      let channelsToJoin: Channel[] = []
 
       if (channelsParam) {
         // Split by comma and format as channels
-        const channelsToJoin = channelsParam
+        channelsToJoin = channelsParam
           .split(",")
           .map((channel) => channel.trim())
           .filter((channel) => channel.length > 0)
           .map((channel) =>
             channel.startsWith("#") ? (channel as Channel) : (`#${channel}` as Channel)
           )
+      }
 
-        // Join each channel
-        if (channelsToJoin.length > 0) {
-          console.log("Joining channels from URL:", channelsToJoin)
-
-          // Join channels one by one to ensure they all get processed
-          channelsToJoin.forEach((channel) => {
-            try {
-              console.log(`Attempting to join channel: ${channel}`)
-              client.join(channel)
-            } catch (error) {
-              console.error(`Error joining channel ${channel}:`, error)
-            }
-          })
+      // If no channels in URL, try to get from localStorage
+      if (channelsToJoin.length === 0) {
+        try {
+          const savedChannels = localStorage.getItem("twitchJoinedChannels")
+          if (savedChannels) {
+            channelsToJoin = JSON.parse(savedChannels)
+          }
+        } catch (error) {
+          console.error("Failed to load channels from localStorage:", error)
         }
+      }
+
+      // Join each channel if we have any
+      if (channelsToJoin.length > 0) {
+        console.log("Joining channels on startup:", channelsToJoin)
+
+        // Join channels one by one to ensure they all get processed
+        channelsToJoin.forEach((channel) => {
+          try {
+            console.log(`Attempting to join channel: ${channel}`)
+            client.join(channel)
+          } catch (error) {
+            console.error(`Error joining channel ${channel}:`, error)
+          }
+        })
       }
     }
   }, [client, isConnected, queryParams])
@@ -202,6 +232,10 @@ const ChatInterface: React.FC = () => {
           if (newChannels.length === 1) {
             setCurrentChannel(channel)
           }
+
+          // Save to localStorage whenever channels change
+          saveChannelsToLocalStorage(newChannels)
+
           return newChannels
         }
         return prev
@@ -224,7 +258,12 @@ const ChatInterface: React.FC = () => {
     }
 
     const handleLeft = (channel: Channel) => {
-      setChannels((prev) => prev.filter((ch) => ch !== channel))
+      setChannels((prev) => {
+        const updatedChannels = prev.filter((ch) => ch !== channel)
+        // Save to localStorage whenever channels change
+        saveChannelsToLocalStorage(updatedChannels)
+        return updatedChannels
+      })
 
       // If we left the current channel, switch to another one
       setCurrentChannel((current) => {
@@ -385,7 +424,7 @@ const ChatInterface: React.FC = () => {
         client.off("roomstate", handleRoomState)
       }
     }
-  }, [client, channels, currentChannel, loadEmotesForChannel])
+  }, [client, channels, currentChannel, loadEmotesForChannel, saveChannelsToLocalStorage])
 
   // Send a message
   const sendMessage = (content: string = messageInput) => {

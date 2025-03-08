@@ -45,14 +45,19 @@ export const IRCClientProvider: React.FC<{
 
         console.log("IRC connection established")
 
-        // Join the specified channels once connected
+        // Join the default channels if specified
         if (config.channels.length > 0) {
-          console.log("Joining channels:", config.channels)
+          console.log("Joining default channels:", config.channels)
           try {
             ircClient.join(config.channels)
           } catch (error) {
-            console.error("Error joining channels:", error)
+            console.error("Error joining default channels:", error)
           }
+        }
+
+        // Make the IRC client available globally for debugging
+        if (typeof window !== "undefined") {
+          ;(window as any).ircClient = ircClient
         }
 
         // Call the onClientCreated callback if provided
@@ -72,6 +77,11 @@ export const IRCClientProvider: React.FC<{
       // Leave all channels
       if (ircClient) {
         ircClient.leave()
+      }
+
+      // Remove the global reference
+      if (typeof window !== "undefined" && (window as any).ircClient === ircClient) {
+        delete (window as any).ircClient
       }
     }
     // The effect intentionally runs only once on mount and uses config/onClientCreated from initial render
