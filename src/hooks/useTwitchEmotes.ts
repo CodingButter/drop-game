@@ -44,6 +44,8 @@ export function useTwitchEmotes() {
     []
   )
 
+  // In useTwitchEmotes.ts, add this to the useEffect that sets up event handlers:
+
   useEffect(() => {
     if (!client) return
 
@@ -66,10 +68,34 @@ export function useTwitchEmotes() {
       }
     }
 
+    // Listen for debug messages
+    const handleDebug = (message: string) => {
+      console.log(`IRC Debug: ${message}`)
+      // If debug message mentions GLOBALUSERSTATE, update our debug info
+      if (message.includes("GLOBALUSERSTATE")) {
+        console.log("Detected GLOBALUSERSTATE in debug message")
+      }
+    }
+
     client.on("globalUserState", handleGlobalUserState)
+    client.on("debug", handleDebug)
+
+    // Explicitly request the global user state after connection
+    setTimeout(() => {
+      try {
+        // This is a new method we added to the IRCClient class
+        if ("requestGlobalUserState" in client) {
+          ;(client as any).requestGlobalUserState()
+          console.log("Explicitly requested GLOBALUSERSTATE")
+        }
+      } catch (err) {
+        console.error("Error requesting GLOBALUSERSTATE:", err)
+      }
+    }, 2000) // Wait 2 seconds to ensure connection is established
 
     return () => {
       client.off("globalUserState", handleGlobalUserState)
+      client.off("debug", handleDebug)
     }
   }, [client])
 

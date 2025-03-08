@@ -26,11 +26,23 @@ const ircConfig = {
   console.log("- window.joinChannel('#channelname')")
   console.log("- window.sendTestMessage()")
   console.log("- window.sendCustomMessage('#channel', 'message')")
+  console.log("- window.requestGlobalUserState()")
 
-  // Initialize message debugger
+  // Initialize message debugger - Now using the imported function
   exposeMessageDebugger()
 
   return "Debug mode activated"
+}
+
+// Add global function to request GLOBALUSERSTATE
+;(window as any).requestGlobalUserState = () => {
+  const client = (window as any).ircClient
+  if (client && client.requestGlobalUserState) {
+    console.log("Manually requesting GLOBALUSERSTATE")
+    client.requestGlobalUserState()
+    return "Request sent"
+  }
+  return "IRC client not available or method not found"
 }
 
 // Add a channel join helper for debugging

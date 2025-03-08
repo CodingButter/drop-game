@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { X, Search, AlertCircle } from "lucide-react"
+import { X, Search, AlertCircle, RefreshCw } from "lucide-react"
 import { useEmotes } from "../../hooks/useEmotes"
 import { useTwitchEmotes } from "../../hooks/useTwitchEmotes"
 
@@ -13,10 +13,14 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
   const [searchQuery, setSearchQuery] = useState("")
   const [bttvEmotes, setBttvEmotes] = useState<Array<{ id: string; code: string; url: string }>>([])
   const [ffzEmotes, setFfzEmotes] = useState<Array<{ id: string; code: string; url: string }>>([])
-  const [activeTab, setActiveTab] = useState<"twitch" | "bttv" | "ffz" | "recent" | "debug">(
-    "twitch"
-  )
+  const [activeTab, setActiveTab] = useState<
+    "twitch" | "bttv" | "ffz" | "recent" | "debug" | "custom"
+  >("twitch")
   const [recentEmotes, setRecentEmotes] = useState<string[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [customEmotes, setCustomEmotes] = useState<
+    Array<{ id: string; code: string; url: string }>
+  >([])
 
   const pickerRef = useRef<HTMLDivElement>(null)
   const { loadedChannels } = useEmotes()
@@ -38,6 +42,69 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
         console.error("Failed to parse recent emotes:", e)
       }
     }
+  }, [])
+
+  // Manually fetch user emotes from Twitch API
+  const fetchUserEmotesManually = async () => {
+    setIsRefreshing(true)
+    try {
+      const clientId = import.meta.env.VITE_CLIENT_ID
+      const oauthToken = import.meta.env.VITE_OAUTH_TOKEN
+
+      if (!clientId || !oauthToken) {
+        console.error("Missing Client ID or OAuth token")
+        setIsRefreshing(false)
+        return
+      }
+
+      // First, get user ID
+      const userResponse = await fetch("https://api.twitch.tv/helix/users", {
+        headers: {
+          "Client-ID": clientId,
+          Authorization: `Bearer ${oauthToken}`,
+        },
+      })
+
+      if (!userResponse.ok) {
+        console.error("Failed to fetch user information")
+        setIsRefreshing(false)
+        return
+      }
+
+      const userData = await userResponse.json()
+
+      // Get user's channel emotes
+      const emotesResponse = await fetch(
+        `https://api.twitch.tv/helix/chat/emotes?broadcaster_id=${userData.data[0].id}`,
+        {
+          headers: {
+            "Client-ID": clientId,
+            Authorization: `Bearer ${oauthToken}`,
+          },
+        }
+      )
+
+      if (emotesResponse.ok) {
+        const emotesData = await emotesResponse.json()
+        const fetchedEmotes = emotesData.data.map((emote: any) => ({
+          id: emote.id,
+          code: emote.name,
+          url: emote.images.url_1x,
+        }))
+
+        setCustomEmotes(fetchedEmotes)
+        console.log("Fetched custom emotes:", fetchedEmotes)
+      }
+    } catch (error) {
+      console.error("Error fetching emotes:", error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Try to fetch emotes when component mounts
+  useEffect(() => {
+    fetchUserEmotesManually()
   }, [])
 
   // Mock loading BTTV and FFZ emotes
@@ -125,6 +192,10 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
     emoteCode.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const filteredCustomEmotes = customEmotes.filter((emote) =>
+    emote.code.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   // Get URL for a Twitch emote
   const getTwitchEmoteUrl = (id: string, size: "1.0" | "2.0" | "3.0" = "1.0") => {
     return `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/${size}`
@@ -165,6 +236,44 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
               alt={emote.code}
               className="w-8 h-8 object-contain"
             />
+            <span className="text-xs mt-1 truncate w-full text-center">{emote.code}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // Render custom emotes grid
+  const renderCustomEmotesGrid = () => {
+    if (isRefreshing) {
+      return (
+        <div className="py-8 text-center text-text-secondary">
+          <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          Loading your emotes...
+        </div>
+      )
+    }
+
+    if (filteredCustomEmotes.length === 0) {
+      return (
+        <div className="py-8 text-center text-text-secondary">
+          {searchQuery ? "No matching emotes found" : "No custom emotes available"}
+          <div className="mt-2 text-xs">Try refreshing using the button in the top right</div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-8 gap-2 p-2">
+        {filteredCustomEmotes.map((emote, index) => (
+          <button
+            key={`custom-${emote.id}-${index}`}
+            className="flex flex-col items-center justify-center p-1 hover:bg-background-tertiary rounded transition-colors"
+            onClick={(e) => handleEmoteSelect(e, emote.code)}
+            title={emote.code}
+            type="button"
+          >
+            <img src={emote.url} alt={emote.code} className="w-8 h-8 object-contain" />
             <span className="text-xs mt-1 truncate w-full text-center">{emote.code}</span>
           </button>
         ))}
@@ -267,9 +376,26 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
           </div>
 
           <div>
+            <div className="font-medium">Custom emotes loaded:</div>
+            <div>
+              {customEmotes.length} emotes
+              {customEmotes.length > 0 && (
+                <span className="text-text-secondary ml-2">
+                  (
+                  {customEmotes
+                    .slice(0, 3)
+                    .map((e) => e.code)
+                    .join(", ")}
+                  ...)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
             <div className="font-medium">Loading state:</div>
-            <div className={twitchEmotesLoading ? "text-warning" : "text-success"}>
-              {twitchEmotesLoading ? "Loading..." : "Completed"}
+            <div className={twitchEmotesLoading || isRefreshing ? "text-warning" : "text-success"}>
+              {twitchEmotesLoading || isRefreshing ? "Loading..." : "Completed"}
             </div>
           </div>
         </div>
@@ -309,17 +435,27 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
       ref={pickerRef}
       className="absolute bottom-full right-0 mb-2 w-80 md:w-96 bg-surface border border-border rounded-lg shadow-lg z-10 overflow-hidden"
     >
-      {/* Header */}
+      {/* Header with refresh button */}
       <div className="flex items-center justify-between p-2 bg-background-secondary border-b border-border">
         <h3 className="font-medium">Emotes</h3>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-background-tertiary rounded-full transition-colors"
-          aria-label="Close emote picker"
-          type="button"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={fetchUserEmotesManually}
+            className="p-1 hover:bg-background-tertiary rounded-full transition-colors"
+            title="Refresh emotes"
+            type="button"
+          >
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-background-tertiary rounded-full transition-colors"
+            aria-label="Close emote picker"
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -351,6 +487,17 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
         </button>
         <button
           className={`flex-1 py-2 px-4 text-sm font-medium ${
+            activeTab === "custom"
+              ? "bg-background-tertiary text-primary border-b-2 border-primary"
+              : "text-text-secondary hover:bg-background-tertiary"
+          }`}
+          onClick={() => setActiveTab("custom")}
+          type="button"
+        >
+          My Emotes
+        </button>
+        <button
+          className={`flex-1 py-2 px-4 text-sm font-medium ${
             activeTab === "bttv"
               ? "bg-background-tertiary text-primary border-b-2 border-primary"
               : "text-text-secondary hover:bg-background-tertiary"
@@ -371,22 +518,12 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
         >
           FFZ
         </button>
-        <button
-          className={`flex-1 py-2 px-4 text-sm font-medium ${
-            activeTab === "recent"
-              ? "bg-background-tertiary text-primary border-b-2 border-primary"
-              : "text-text-secondary hover:bg-background-tertiary"
-          }`}
-          onClick={() => setActiveTab("recent")}
-          type="button"
-        >
-          Recent
-        </button>
       </div>
 
       {/* Content */}
       <div className="max-h-64 overflow-y-auto">
         {activeTab === "twitch" && renderTwitchEmotesGrid()}
+        {activeTab === "custom" && renderCustomEmotesGrid()}
         {activeTab === "bttv" && renderEmoteGrid(filteredBttvEmotes, "bttv")}
         {activeTab === "ffz" && renderEmoteGrid(filteredFfzEmotes, "ffz")}
         {activeTab === "recent" && renderEmoteGrid(filteredRecentEmotes, "recent")}
@@ -401,13 +538,25 @@ const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, cha
             ? ` ${loadedChannels.length} channel(s) loaded`
             : " No channels loaded"}
         </div>
-        <button
-          onClick={() => setActiveTab(activeTab === "debug" ? "twitch" : "debug")}
-          className="text-primary hover:underline"
-          type="button"
-        >
-          {activeTab === "debug" ? "Hide Debug" : "Debug"}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setActiveTab("recent")}
+            className={`${
+              activeTab === "recent" ? "text-primary" : "text-text-secondary"
+            } hover:underline`}
+            type="button"
+          >
+            Recent
+          </button>
+          <span>•</span>
+          <button
+            onClick={() => setActiveTab(activeTab === "debug" ? "twitch" : "debug")}
+            className="text-primary hover:underline"
+            type="button"
+          >
+            {activeTab === "debug" ? "Hide Debug" : "Debug"}
+          </button>
+        </div>
       </div>
     </div>
   )

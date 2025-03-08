@@ -49,8 +49,9 @@ interface TwitchEventMap extends Record<string, any[]> {
   userLeft: [Channel, string]
   notice: [{ channel: Channel; message: string }]
   GLOBALUSERSTATE: [{ tags: Tags }]
-  globalUserState: [{ emoteSets: string[]; tags: Tags }] // Added lowercase version with emoteSets data
+  globalUserState: [{ emoteSets: string[]; tags: Tags }]
   roomstate: [Channel, Tags]
+  debug: [string] // Added debug event
 }
 
 /**
@@ -78,6 +79,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
   private windowMs = 30 * 1000 // 30 seconds rate limit window
   private sentCount = 0
   private windowStart = Date.now()
+  private capabilitiesRequested = false
 
   constructor(server: string, oauthToken: string, nick: string) {
     super()
@@ -91,6 +93,14 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
   }
 
   /**
+   * Sends a debug message through the event system
+   */
+  private debug(message: string): void {
+    console.log(`[IRC Debug] ${message}`)
+    this.emit("debug", message)
+  }
+
+  /**
    * Establishes a WebSocket connection to Twitch IRC.
    * Sends authentication and requests necessary capabilities.
    */
@@ -99,23 +109,52 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
       this.socket = new WebSocket(this.server, "irc")
 
       this.socket.addEventListener("open", () => {
-        // Request Twitch IRC capabilities
-        this.socket!.send(`CAP REQ :${Object.values(TwitchCapabilities).join(" ")}`)
+        this.debug("WebSocket connection opened, requesting capabilities")
+
+        // Request Twitch IRC capabilities - now with explicit debug info
+        const capRequest = `CAP REQ :${Object.values(TwitchCapabilities).join(" ")}`
+        this.socket!.send(capRequest)
+        this.debug(`Sent: ${capRequest}`)
+        this.capabilitiesRequested = true
+
         // Authenticate with provided OAuth token
         this.socket!.send(`PASS oauth:${this.oauthToken}`)
+        this.debug(`Sent: PASS oauth:****`)
+
         this.socket!.send(`NICK ${this.nick}`)
+        this.debug(`Sent: NICK ${this.nick}`)
+
         this.emit("open")
         resolve()
       })
 
       this.socket.addEventListener("error", (err) => {
+        this.debug(`WebSocket error: ${err}`)
         this.emit("error", { error: err, message: "Connection error" })
         reject(err)
       })
 
       this.socket.addEventListener("message", (event) => this.handleMessage(event))
-      this.socket.addEventListener("close", () => this.emit("close"))
+      this.socket.addEventListener("close", () => {
+        this.debug("WebSocket connection closed")
+        this.emit("close")
+      })
     })
+  }
+
+  /**
+   * Explicitly request GLOBALUSERSTATE (attempt to force it)
+   */
+  requestGlobalUserState(): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      this.debug("Cannot request GLOBALUSERSTATE, socket not open")
+      return
+    }
+
+    // Re-request capabilities to try and trigger GLOBALUSERSTATE
+    const capRequest = `CAP REQ :${Object.values(TwitchCapabilities).join(" ")}`
+    this.socket.send(capRequest)
+    this.debug(`Re-requested capabilities: ${capRequest}`)
   }
 
   /**
@@ -127,23 +166,24 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
 
     // Check if socket exists and is ready
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.log("Socket not ready, attempting to connect first...")
+      this.debug("Socket not ready, attempting to connect first...")
       try {
         await this.connect()
       } catch (error) {
-        console.error("Failed to connect:", error)
+        this.debug(`Failed to connect: ${error}`)
         throw new Error(`Cannot join channel, connection failed: ${error}`)
       }
 
       // Double-check that connection succeeded
       if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        this.debug("WebSocket not in OPEN state after connection attempt")
         throw new Error("Cannot join channel, WebSocket not in OPEN state after connection attempt")
       }
     }
 
     // Now that we know socket is open, proceed with joining
     const channelList = channelsToJoin.map((ch) => ch.toLowerCase()).join(",")
-    console.log(`Sending JOIN command for: ${channelList}`)
+    this.debug(`Sending JOIN command for: ${channelList}`)
     this.socket.send(`JOIN ${channelList}`)
 
     channelsToJoin.forEach((ch) => {
@@ -166,6 +206,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
     if (channelsToLeave.length === 0) return
     const channelList = channelsToLeave.join(",")
     this.socket.send(`PART ${channelList}`)
+    this.debug(`Sent PART command for: ${channelList}`)
     channelsToLeave.forEach((ch) => {
       this.channels.delete(ch)
       this.emit("left", ch)
@@ -206,7 +247,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
     const lines = data.split(/\r\n/).filter((l: string) => l.length)
 
     for (const line of lines) {
-      console.log(`[RAW IRC] ${line}`) // Debug log for raw IRC messages
+      this.debug(`[RAW IRC] ${line}`)
 
       // Handle PING messages
       if (line.startsWith("PING")) {
@@ -284,6 +325,11 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
           }
         }
 
+        // Check for capability acknowledgment
+        if (command.toUpperCase() === "CAP" && params.length >= 2 && params[1] === "ACK") {
+          this.debug(`Capability acknowledgment received: ${params[2]}`)
+        }
+
         // Handle different IRC commands
         switch (command.toUpperCase()) {
           case "PRIVMSG": {
@@ -322,16 +368,20 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
             // Notice message - params[0] is channel, params[1] is message
             const channel = params[0] as Channel
             const message = params[1]
+            this.debug(`NOTICE received: ${channel} - ${message}`)
             this.emit("notice", { channel, message })
             break
           }
 
           case "GLOBALUSERSTATE": {
+            // This is the key event we're looking for!
+            this.debug("GLOBALUSERSTATE RECEIVED!" + JSON.stringify(tags))
+
             // Extract emote sets from tags and parse them
             const emoteSetStr = tags["emote-sets"] || ""
             const emoteSets = emoteSetStr.split(",").filter(Boolean)
 
-            console.log("GLOBALUSERSTATE received with emote sets:", emoteSetStr)
+            this.debug(`Emote sets: ${emoteSetStr}`)
 
             // Emit both capitalized and lowercase variants for compatibility
             this.emit("GLOBALUSERSTATE", { tags })
@@ -352,6 +402,14 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
           }
 
           case "001": // RPL_WELCOME - Successfully registered
+            this.debug("Successfully registered with Twitch IRC (001)")
+            // Some IRC servers send GLOBALUSERSTATE after registration completes
+            // Let's request capabilities again just to be sure
+            if (this.capabilitiesRequested) {
+              this.requestGlobalUserState()
+            }
+            break
+
           case "002": // RPL_YOURHOST
           case "003": // RPL_CREATED
           case "004": // RPL_MYINFO
@@ -359,7 +417,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
           case "372": // RPL_MOTD
           case "376": // RPL_ENDOFMOTD
             // Connection confirmation codes
-            console.log(`[IRC] Received connection confirmation: ${command}`)
+            this.debug(`Connection confirmation received: ${command}`)
             break
 
           case "421": // ERR_UNKNOWNCOMMAND
@@ -367,6 +425,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
           case "432": // ERR_ERRONEUSNICKNAME
           case "433": // ERR_NICKNAMEINUSE
             // Nickname-related errors
+            this.debug(`Nickname error: ${params.join(" ")}`)
             this.emit("error", {
               error: new Error(`Nickname error: ${params.join(" ")}`),
               message: `Nickname error: ${params.join(" ")}`,
@@ -374,7 +433,7 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
             break
 
           default:
-            console.log(`[IRC] Unhandled command: ${command}`)
+            this.debug(`Unhandled command: ${command}`)
             break
         }
       } catch (error) {
