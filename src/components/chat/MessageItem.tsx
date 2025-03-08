@@ -1,5 +1,7 @@
 import React from "react"
 import { Message } from "../../../types/Message"
+import { parseEmotes, splitMessageWithEmotes, getTwitchEmoteUrl } from "../../utils/emoteUtils"
+import { findThirdPartyEmotes } from "../../utils/thirdPartyEmotes"
 
 interface MessageItemProps {
   message: Message
@@ -55,6 +57,108 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     )
   }
 
+  // Parse and render message content with emotes
+  const renderMessageContent = () => {
+    if (message.username === "system") {
+      return <p className="break-words text-gray-400">{message.content}</p>
+    }
+
+    // Parse Twitch emotes from the tags
+    const twEmotes = parseEmotes(message.tags.emotes, message.content)
+
+    // If there are Twitch emotes, process them
+    if (twEmotes.length) {
+      // Split the message into parts (text and emotes)
+      const messageParts = splitMessageWithEmotes(message.content, twEmotes)
+
+      return (
+        <p className="break-words flex flex-wrap items-center">
+          {messageParts.map((part, index) => {
+            if (typeof part === "string") {
+              // Process this text part for third-party emotes
+              const channelId = message.tags["room-id"] || ""
+
+              if (channelId) {
+                const thirdPartyParts = findThirdPartyEmotes(part, channelId)
+
+                return (
+                  <React.Fragment key={index}>
+                    {thirdPartyParts.map((tpPart, tpIndex) => {
+                      if (typeof tpPart === "string") {
+                        return <span key={`${index}-${tpIndex}`}>{tpPart}</span>
+                      } else {
+                        // It's a third-party emote
+                        return (
+                          <img
+                            key={`${index}-${tpIndex}`}
+                            src={tpPart.url}
+                            alt={tpPart.code}
+                            title={tpPart.code}
+                            className="inline-block mx-1 align-middle"
+                            width="28"
+                            height="28"
+                          />
+                        )
+                      }
+                    })}
+                  </React.Fragment>
+                )
+              }
+
+              return <span key={index}>{part}</span>
+            } else {
+              // It's a Twitch emote
+              return (
+                <img
+                  key={index}
+                  src={getTwitchEmoteUrl(part.id, "1.0")}
+                  alt={part.code}
+                  title={part.code}
+                  className="inline-block mx-1 align-middle"
+                  width="28"
+                  height="28"
+                />
+              )
+            }
+          })}
+        </p>
+      )
+    } else {
+      // No Twitch emotes, check for third-party emotes
+      const channelId = message.tags["room-id"] || ""
+
+      if (channelId) {
+        const thirdPartyParts = findThirdPartyEmotes(message.content, channelId)
+
+        return (
+          <p className="break-words flex flex-wrap items-center">
+            {thirdPartyParts.map((part, index) => {
+              if (typeof part === "string") {
+                return <span key={index}>{part}</span>
+              } else {
+                // It's a third-party emote
+                return (
+                  <img
+                    key={index}
+                    src={part.url}
+                    alt={part.code}
+                    title={part.code}
+                    className="inline-block mx-1 align-middle"
+                    width="28"
+                    height="28"
+                  />
+                )
+              }
+            })}
+          </p>
+        )
+      }
+
+      // No emotes at all, just render the text
+      return <p className="break-words">{message.content}</p>
+    }
+  }
+
   return (
     <div
       className={`p-3 rounded-lg transition-all ${
@@ -99,9 +203,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
           {formatTime(message.timestamp)}
         </span>
       </div>
-      <p className={`break-words ${message.username === "system" ? "text-gray-400" : ""}`}>
-        {message.content}
-      </p>
+      {renderMessageContent()}
     </div>
   )
 }

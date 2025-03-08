@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { useIRCClient } from "../hooks/useIRCClient"
 import { Message, Channel } from "../../types/Message"
 import { generateUniqueId } from "../utils/messageUtils"
+import { useEmotes } from "../hooks/useEmotes"
 
 // Components
 import ChannelList from "./chat/ChannelList"
@@ -11,6 +12,8 @@ import Header from "./chat/Header"
 
 const ChatInterface: React.FC = () => {
   const client = useIRCClient()
+  const { loadEmotesForChannel, isLoading: emoteLoading } = useEmotes()
+
   const [messages, setMessages] = useState<Message[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null)
@@ -18,6 +21,9 @@ const ChatInterface: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false)
   const [newChannelInput, setNewChannelInput] = useState("")
   const [connectionStatus, setConnectionStatus] = useState("Connecting...")
+
+  // Track channel IDs for emote loading
+  const [_, setChannelIds] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!client) {
@@ -52,6 +58,24 @@ const ChatInterface: React.FC = () => {
       }
 
       setMessages((prev) => [...prev, newMessage])
+
+      // Store room ID for this channel if available
+      if (tags["room-id"] && newMessage.channel) {
+        const channelName = newMessage.channel.replace("#", "")
+
+        setChannelIds((prev) => {
+          if (!prev[newMessage.channel]) {
+            // Load emotes for this channel
+            loadEmotesForChannel(tags["room-id"], channelName)
+
+            return {
+              ...prev,
+              [newMessage.channel]: tags["room-id"],
+            }
+          }
+          return prev
+        })
+      }
     }
 
     const handleJoined = (channel: Channel) => {
@@ -192,6 +216,27 @@ const ChatInterface: React.FC = () => {
       setMessages((prev) => [...prev, errorMessage])
     }
 
+    // Handle room state to get channel info
+    const handleRoomState = (channel: Channel, state: any) => {
+      // Room state includes room-id which we need for emotes
+      if (state && state["room-id"]) {
+        const channelName = channel.replace("#", "")
+
+        setChannelIds((prev) => {
+          if (!prev[channel]) {
+            // Load emotes for this channel if we haven't already
+            loadEmotesForChannel(state["room-id"], channelName)
+
+            return {
+              ...prev,
+              [channel]: state["room-id"],
+            }
+          }
+          return prev
+        })
+      }
+    }
+
     // Register event listeners
     if (client) {
       client.on("message", handleMessage)
@@ -203,6 +248,7 @@ const ChatInterface: React.FC = () => {
       client.on("close", handleClose)
       client.on("error", handleError)
       client.on("ping", handlePing)
+      client.on("roomstate", handleRoomState)
 
       // Debug event for client status
       console.log("Client is connected and event handlers registered")
@@ -220,9 +266,10 @@ const ChatInterface: React.FC = () => {
         client.off("close", handleClose)
         client.off("error", handleError)
         client.off("ping", handlePing)
+        client.off("roomstate", handleRoomState)
       }
     }
-  }, [client, channels, currentChannel])
+  }, [client, channels, currentChannel, loadEmotesForChannel])
 
   // Send a message
   const sendMessage = () => {
@@ -334,7 +381,7 @@ const ChatInterface: React.FC = () => {
       {/* App header with connection status */}
       <Header
         isConnected={isConnected}
-        connectionStatus={connectionStatus}
+        connectionStatus={emoteLoading ? "Loading emotes..." : connectionStatus}
         currentChannel={currentChannel}
       />
 
