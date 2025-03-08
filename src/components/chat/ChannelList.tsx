@@ -35,7 +35,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
               <button
                 key={channel}
                 onClick={() => setCurrentChannel(channel)}
-                className={`w-full text-left px-3 py-2 rounded transition-all ${
+                className={`cursor-pointer w-full text-left px-3 py-2 rounded transition-all ${
                   currentChannel === channel
                     ? "bg-primary shadow-md shadow-primary/20"
                     : "bg-background-tertiary hover:bg-surface-hover"

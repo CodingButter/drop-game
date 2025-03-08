@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useIRCClient } from "../hooks/useIRCClient"
 import { Message, Channel } from "../../types/Message"
 import { generateUniqueId } from "../utils/messageUtils"
 import { useEmotes } from "../hooks/useEmotes"
+import { useLocation } from "react-router-dom"
+import { fetchUsersData } from "../utils/twitchApiUtils"
 
 // Components
 import ChannelList from "./chat/ChannelList"
@@ -11,9 +13,16 @@ import Header from "./chat/Header"
 import ChatInputWithCommandPopup from "./chat/ChatInputWithCommandPopup"
 import UserMessagesPopup from "./chat/UserMessagesPopup"
 
+// Helper function to parse query params
+const useQueryParams = () => {
+  const { search } = useLocation()
+  return React.useMemo(() => new URLSearchParams(search), [search])
+}
+
 const ChatInterface: React.FC = () => {
   const client = useIRCClient()
   const { loadEmotesForChannel, isLoading: emoteLoading } = useEmotes()
+  const queryParams = useQueryParams()
 
   const [messages, setMessages] = useState<Message[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -29,6 +38,99 @@ const ChatInterface: React.FC = () => {
 
   // Track channel IDs for emote loading (using underscore to indicate it's used indirectly)
   const [_channelIds, setChannelIds] = useState<Record<string, string>>({})
+
+  // Batching system for profile image fetches
+  const [pendingUserFetches, setPendingUserFetches] = useState<
+    { userId: string; messageId: string }[]
+  >([])
+  const userFetchTimerRef = useRef<number | null>(null)
+
+  // Handle batched profile image fetches
+  useEffect(() => {
+    if (pendingUserFetches.length > 0 && !userFetchTimerRef.current) {
+      userFetchTimerRef.current = window.setTimeout(() => {
+        // Extract unique user IDs
+        const userIds = Array.from(new Set(pendingUserFetches.map((item) => item.userId)))
+        const messageMap: Record<string, string[]> = {}
+
+        // Create mapping of user IDs to message IDs
+        pendingUserFetches.forEach((item) => {
+          if (!messageMap[item.userId]) {
+            messageMap[item.userId] = []
+          }
+          messageMap[item.userId].push(item.messageId)
+        })
+
+        // Fetch user data in batch
+        fetchUsersData(userIds)
+          .then((userData) => {
+            // Update messages with the fetched data
+            setMessages((prev) => {
+              return prev.map((msg) => {
+                const userId = msg.tags["user-id"]
+                if (userId && userData[userId] && messageMap[userId]?.includes(msg.id)) {
+                  return {
+                    ...msg,
+                    profileImage: userData[userId].profileImage,
+                  }
+                }
+                return msg
+              })
+            })
+
+            // Clear pending fetches and timer
+            setPendingUserFetches([])
+            userFetchTimerRef.current = null
+          })
+          .catch((error) => {
+            console.error("Error fetching user data in batch:", error)
+            // Clear pending fetches and timer even on error
+            setPendingUserFetches([])
+            userFetchTimerRef.current = null
+          })
+      }, 500) // Wait 500ms to batch requests
+    }
+
+    return () => {
+      if (userFetchTimerRef.current) {
+        clearTimeout(userFetchTimerRef.current)
+        userFetchTimerRef.current = null
+      }
+    }
+  }, [pendingUserFetches])
+
+  // Parse channels from query params when client is connected
+  useEffect(() => {
+    if (client && isConnected) {
+      const channelsParam = queryParams.get("channels")
+
+      if (channelsParam) {
+        // Split by comma and format as channels
+        const channelsToJoin = channelsParam
+          .split(",")
+          .map((channel) => channel.trim())
+          .filter((channel) => channel.length > 0)
+          .map((channel) =>
+            channel.startsWith("#") ? (channel as Channel) : (`#${channel}` as Channel)
+          )
+
+        // Join each channel
+        if (channelsToJoin.length > 0) {
+          console.log("Joining channels from URL:", channelsToJoin)
+
+          // Join channels one by one to ensure they all get processed
+          channelsToJoin.forEach((channel) => {
+            try {
+              console.log(`Attempting to join channel: ${channel}`)
+              client.join(channel)
+            } catch (error) {
+              console.error(`Error joining channel ${channel}:`, error)
+            }
+          })
+        }
+      }
+    }
+  }, [client, isConnected, queryParams])
 
   useEffect(() => {
     if (!client) {
@@ -59,10 +161,19 @@ const ChatInterface: React.FC = () => {
         timestamp: new Date(),
         isCurrentUser: chatMessage.self || false,
         badges: tags.badges,
+        profileImage: null, // Will be populated later
         tags: tags,
       }
 
       setMessages((prev) => [...prev, newMessage])
+
+      // Add pending fetch for user profile if user ID is available
+      if (tags["user-id"]) {
+        setPendingUserFetches((prev) => [
+          ...prev,
+          { userId: tags["user-id"], messageId: newMessage.id },
+        ])
+      }
 
       // Store room ID for this channel if available
       if (tags["room-id"] && newMessage.channel) {

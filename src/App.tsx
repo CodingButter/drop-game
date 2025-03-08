@@ -4,7 +4,7 @@ import { Routes, Route, Outlet } from "react-router-dom"
 // Import your page components
 import HomePage from "./pages/HomePage"
 import ChatPage from "./pages/ChatPage"
-import GamesDashboard from "./pages/GamesDashboard.tsx"
+import GamesDashboard from "./pages/GamesDashboard"
 import DropGame from "./pages/games/DropGame"
 
 // Layout component for the Games section

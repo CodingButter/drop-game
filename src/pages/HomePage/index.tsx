@@ -1,12 +1,11 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import { MessageSquare, Gamepad2, ArrowRight } from "lucide-react"
-import { useTheme } from "../hooks/useTheme"
-import ThemeSwitcher from "../components/ThemeSwitcher"
+import ThemeSwitcher from "../../components/ThemeSwitcher"
+import FeatureCard from "./components/FeatureCard"
+import HowItWorksStep from "./components/HowItWorksStep"
 
 const HomePage: React.FC = () => {
-  const { theme } = useTheme()
-
   const features = [
     {
       title: "Twitch Chat Integration",
@@ -31,6 +30,30 @@ const HomePage: React.FC = () => {
       ),
       link: null,
       component: <ThemeSwitcher className="mt-4" />,
+    },
+  ]
+
+  const howItWorksSteps = [
+    {
+      number: 1,
+      title: "Connect to Twitch",
+      description:
+        "Join your favorite Twitch channels using our IRC client integration. Simply enter a channel name and start chatting.",
+      bgColor: "bg-primary",
+    },
+    {
+      number: 2,
+      title: "Interact with Chat",
+      description:
+        "View messages in real-time with full support for Twitch emotes, badges, and chat commands. Filter messages and search through chat history.",
+      bgColor: "bg-secondary",
+    },
+    {
+      number: 3,
+      title: "Play Interactive Games",
+      description:
+        "Launch games that integrate with your Twitch chat, allowing viewers to participate directly through chat commands.",
+      bgColor: "bg-accent",
     },
   ]
 
@@ -77,24 +100,14 @@ const HomePage: React.FC = () => {
           <h2 className="text-3xl font-bold text-center mb-12">Features</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <div
+              <FeatureCard
                 key={index}
-                className="p-6 rounded-xl bg-surface border border-border hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5"
-              >
-                <div className="mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-text-secondary mb-4">{feature.description}</p>
-                {feature.link && (
-                  <Link
-                    to={feature.link}
-                    className="inline-flex items-center text-primary hover:text-primary-light font-medium transition-colors"
-                  >
-                    Try it now <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                )}
-                {/* Render the component if it exists */}
-                {feature.component}
-              </div>
+                title={feature.title}
+                description={feature.description}
+                icon={feature.icon}
+                link={feature.link}
+                component={feature.component}
+              />
             ))}
           </div>
         </div>
@@ -106,44 +119,15 @@ const HomePage: React.FC = () => {
           <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
           <div className="max-w-3xl mx-auto">
             <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                  1
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Connect to Twitch</h3>
-                  <p className="text-text-secondary">
-                    Join your favorite Twitch channels using our IRC client integration. Simply
-                    enter a channel name and start chatting.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white font-bold">
-                  2
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Interact with Chat</h3>
-                  <p className="text-text-secondary">
-                    View messages in real-time with full support for Twitch emotes, badges, and chat
-                    commands. Filter messages and search through chat history.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-bold">
-                  3
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Play Interactive Games</h3>
-                  <p className="text-text-secondary">
-                    Launch games that integrate with your Twitch chat, allowing viewers to
-                    participate directly through chat commands.
-                  </p>
-                </div>
-              </div>
+              {howItWorksSteps.map((step, index) => (
+                <HowItWorksStep
+                  key={index}
+                  number={step.number}
+                  title={step.title}
+                  description={step.description}
+                  bgColor={step.bgColor}
+                />
+              ))}
             </div>
           </div>
         </div>

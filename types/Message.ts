@@ -1,10 +1,4 @@
-/**
- * Type definitions for chat messages and related entities
- */
-
-/**
- * Represents a chat message in the interface
- */
+// types/Message.ts
 export type Message = {
   id: string
   channel: string
@@ -15,6 +9,7 @@ export type Message = {
   timestamp: Date
   isCurrentUser: boolean
   badges?: string
+  profileImage?: string | null
   tags: {
     "badge-info"?: string
     badges?: string
@@ -30,8 +25,3 @@ export type Message = {
     [key: string]: string | undefined
   }
 }
-
-/**
- * Channel type for Twitch channels (always prefixed with #)
- */
-export type Channel = `#${string}`

@@ -1,5 +1,7 @@
 import React from "react"
 import ThemeSwitcher from "../ThemeSwitcher"
+import { Link } from "react-router-dom"
+import { Home } from "lucide-react"
 
 interface HeaderProps {
   isConnected: boolean
@@ -11,9 +13,14 @@ const Header: React.FC<HeaderProps> = ({ isConnected, connectionStatus, currentC
   const AppHeader = () => (
     <header className="bg-background-secondary p-4 shadow-lg border-b border-primary/20">
       <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          Twitch Chat Client
-        </h1>
+        <div className="flex items-center space-x-4">
+          <Link to="/" className="text-text hover:text-primary transition-colors" title="Home">
+            <Home size={24} />
+          </Link>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Twitch Chat Client
+          </h1>
+        </div>
         <div className="flex items-center space-x-4">
           <ThemeSwitcher />
           <div className="flex items-center space-x-2">

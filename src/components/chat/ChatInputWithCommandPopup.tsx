@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
-import { Send, Command } from "lucide-react"
+import { Send, Command, Smile } from "lucide-react"
+import EmotesPicker from "./EmotesPicker"
 
 interface ChatInputWithCommandPopupProps {
   channelName?: string | null
@@ -26,6 +27,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
 }) => {
   const [message, setMessage] = useState("")
   const [showCommands, setShowCommands] = useState(false)
+  const [showEmotes, setShowEmotes] = useState(false)
   const [filteredCommands, setFilteredCommands] = useState(TWITCH_COMMANDS)
   const inputRef = useRef<HTMLInputElement>(null)
   const commandsRef = useRef<HTMLDivElement>(null)
@@ -90,18 +92,53 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
     inputRef.current?.focus()
   }
 
+  const handleEmoteSelect = (emoteCode: string) => {
+    // Add the emote to the message, with a space if needed
+    const newMessage =
+      message.endsWith(" ") || message === ""
+        ? message + emoteCode + " "
+        : message + " " + emoteCode + " "
+
+    setMessage(newMessage)
+    inputRef.current?.focus()
+  }
+
+  const toggleEmotesPicker = () => {
+    setShowEmotes((prev) => !prev)
+    // If closing, focus back on the input
+    if (showEmotes) {
+      setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }
+
   return (
     <div className="p-4 bg-surface border-t border-border relative">
       <form onSubmit={handleSubmit} className="flex space-x-2">
         <div className="relative flex-1">
-          <input
-            ref={inputRef}
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={`Message ${channelName || "chat"}`}
-            className="w-full px-4 py-3 bg-background-tertiary rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
-          />
+          <div className="relative flex items-center">
+            <input
+              ref={inputRef}
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={`Message ${channelName || "chat"}`}
+              className="w-full pl-4 pr-12 py-3 bg-background-tertiary rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+            />
+
+            {/* Emote button */}
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <button
+                type="button"
+                onClick={toggleEmotesPicker}
+                className={`p-2 rounded-full hover:bg-background ${
+                  showEmotes ? "text-primary bg-background" : "text-text-secondary"
+                }`}
+                aria-label="Insert Emote"
+              >
+                <Smile size={20} />
+              </button>
+            </div>
+          </div>
 
           {/* Command suggestions popup */}
           {showCommands && filteredCommands.length > 0 && (
@@ -125,6 +162,15 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Emotes picker popup */}
+          {showEmotes && (
+            <EmotesPicker
+              onClose={() => setShowEmotes(false)}
+              onSelectEmote={handleEmoteSelect}
+              channelName={channelName}
+            />
           )}
         </div>
         <button

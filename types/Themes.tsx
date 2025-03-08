@@ -1,6 +1,6 @@
 import { Sun, Moon, Palette } from "lucide-react"
 
-export type ThemeMode = "light" | "dark" | "purple" | "blue" | "green"
+export type ThemeMode = "light" | "dark" | "purple" | "blue" | "green" | "midnight"
 export type BaseTheme = "light" | "dark"
 
 export const themes: { value: ThemeMode; label: string; icon?: React.ReactNode }[] = [
@@ -20,6 +20,11 @@ export const themes: { value: ThemeMode; label: string; icon?: React.ReactNode }
     value: "green",
     label: "Green",
     icon: <Palette className="text-[var(--icon-green)]" size={16} />,
+  },
+  {
+    value: "midnight",
+    label: "Midnight",
+    icon: <Palette className="text-[var(--icon-midnight)]" size={16} />,
   },
 ]
 

@@ -1,7 +1,9 @@
+// src/components/chat/MessageItem.tsx
 import React from "react"
 import { Message } from "../../../types/Message"
 import { parseEmotes, splitMessageWithEmotes, getTwitchEmoteUrl } from "../../utils/emoteUtils"
 import { findThirdPartyEmotes } from "../../utils/thirdPartyEmotes"
+import { User } from "lucide-react"
 
 interface MessageItemProps {
   message: Message
@@ -203,6 +205,23 @@ const MessageItem: React.FC<MessageItemProps> = ({
       }`}
     >
       <div className="flex items-start mb-1">
+        {/* Profile Image - new addition */}
+        {message.username !== "system" && (
+          <div className="flex-shrink-0 mr-3">
+            {message.profileImage ? (
+              <img
+                src={message.profileImage}
+                alt={message.displayName}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-background-tertiary flex items-center justify-center">
+                <User size={16} className="text-text-secondary" />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center flex-1 min-w-0">
           {message.username !== "system" && (
             <>
@@ -245,7 +264,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </span>
         )}
       </div>
-      {renderMessageContent()}
+      <div className="pl-11">{renderMessageContent()}</div>
     </div>
   )
 }
