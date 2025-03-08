@@ -23,9 +23,9 @@ const ChannelList: React.FC<ChannelListProps> = ({
   isConnected,
 }) => {
   return (
-    <aside className="w-64 bg-gray-800 flex flex-col border-r border-purple-500/20">
-      <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-gray-200">Channels</h2>
+    <aside className="w-64 bg-surface flex flex-col border-r border-primary/20">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-xl font-bold text-text">Channels</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 message-container">
@@ -37,8 +37,8 @@ const ChannelList: React.FC<ChannelListProps> = ({
                 onClick={() => setCurrentChannel(channel)}
                 className={`w-full text-left px-3 py-2 rounded transition-all ${
                   currentChannel === channel
-                    ? "bg-purple-600 shadow-md shadow-purple-500/20"
-                    : "bg-gray-700 hover:bg-gray-600"
+                    ? "bg-primary shadow-md shadow-primary/20"
+                    : "bg-background-tertiary hover:bg-surface-hover"
                 }`}
               >
                 {channel}
@@ -46,7 +46,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
             ))}
           </div>
         ) : (
-          <p className="text-gray-400 text-sm">No channels joined</p>
+          <p className="text-text-secondary text-sm">No channels joined</p>
         )}
       </div>
 

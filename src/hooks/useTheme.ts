@@ -1,17 +1,10 @@
 import { createContext, useContext } from "react"
-// Define theme types
-export type Theme = "light" | "dark"
-export type ThemeMode = "dark" | "light" | "purple" | "blue" | "green"
+import { ThemeContextValue } from "../../types/Themes"
 
-interface ThemeContextValue {
-  theme: ThemeMode
-  setTheme: (theme: ThemeMode) => void
-}
-
+// Create context with default values
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
-// Custom hook for using theme context
-
+// Custom hook to use the theme context
 export const useTheme = () => {
   const context = useContext(ThemeContext)
   if (!context) {

@@ -18,7 +18,7 @@ const JoinForm: React.FC<JoinFormProps> = ({
   isConnected,
 }) => {
   return (
-    <div className="p-4 border-t border-gray-700 bg-gray-800/50">
+    <div className="p-4 border-t border-border bg-surface/50">
       <div className="mb-3">
         <div className="flex space-x-2 overflow-hidden">
           <input
@@ -26,7 +26,7 @@ const JoinForm: React.FC<JoinFormProps> = ({
             value={newChannelInput}
             onChange={(e) => setNewChannelInput(e.target.value)}
             placeholder="Channel name"
-            className="flex-1 min-w-0 px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+            className="flex-1 min-w-0 px-3 py-2 bg-background-tertiary rounded border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
             onKeyDown={(e) => {
               if (e.key === "Enter") joinChannel()
             }}
@@ -34,7 +34,7 @@ const JoinForm: React.FC<JoinFormProps> = ({
           <button
             onClick={joinChannel}
             disabled={!isConnected}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="px-3 py-2 bg-success hover:bg-success/80 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             Join
           </button>
@@ -45,7 +45,7 @@ const JoinForm: React.FC<JoinFormProps> = ({
         <button
           onClick={leaveCurrentChannel}
           disabled={!isConnected}
-          className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-2 px-4 bg-error hover:bg-error/80 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Leave {currentChannel}
         </button>

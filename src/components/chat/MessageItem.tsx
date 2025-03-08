@@ -40,14 +40,14 @@ const MessageItem: React.FC<MessageItemProps> = ({
             style={{
               backgroundColor:
                 badge.type === "moderator"
-                  ? "#00AD03"
+                  ? "var(--color-success)"
                   : badge.type === "subscriber"
-                  ? "#8205B4"
+                  ? "var(--color-primary)"
                   : badge.type === "vip"
-                  ? "#E005B9"
+                  ? "var(--color-accent)"
                   : badge.type === "broadcaster"
-                  ? "#E71818"
-                  : "#6441A4",
+                  ? "var(--color-error)"
+                  : "var(--color-secondary)",
             }}
           >
             {badge.type === "moderator"
@@ -84,7 +84,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   // Parse and render message content with emotes
   const renderMessageContent = () => {
     if (message.username === "system") {
-      return <p className="break-words text-gray-400">{message.content}</p>
+      return <p className="break-words text-text-tertiary">{message.content}</p>
     }
 
     // Parse Twitch emotes from the tags
@@ -194,12 +194,12 @@ const MessageItem: React.FC<MessageItemProps> = ({
     <div
       className={`p-3 rounded-lg transition-all ${
         isMentioned
-          ? "bg-purple-900/40 border border-purple-500/40"
+          ? "bg-chat-mention/40 border border-primary/40"
           : message.isCurrentUser
-          ? "bg-purple-900/30 border border-purple-500/30"
+          ? "bg-chat-self/30 border border-primary/30"
           : message.username === "system"
-          ? "bg-gray-800/50 border border-gray-700"
-          : "bg-gray-800 hover:bg-gray-800/80"
+          ? "bg-surface/50 border border-border"
+          : "bg-surface hover:bg-surface-hover"
       }`}
     >
       <div className="flex items-start mb-1">
@@ -220,7 +220,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </>
           )}
           {message.username === "system" && (
-            <span className="font-semibold text-gray-400 flex items-center">
+            <span className="font-semibold text-text-tertiary flex items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4 mr-1"
@@ -240,7 +240,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           )}
         </div>
         {showTimestamp && (
-          <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+          <span className="text-xs text-text-secondary ml-2 flex-shrink-0">
             {formatTime(message.timestamp)}
           </span>
         )}

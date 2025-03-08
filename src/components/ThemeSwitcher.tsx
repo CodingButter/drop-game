@@ -1,7 +1,7 @@
 import React from "react"
-import { useTheme, ThemeMode } from "../hooks/useTheme"
+import { useTheme } from "../hooks/useTheme"
 import { Sun, Moon, Palette } from "lucide-react"
-
+import { ThemeMode } from "../../types/Themes"
 interface ThemeSwitcherProps {
   className?: string
 }

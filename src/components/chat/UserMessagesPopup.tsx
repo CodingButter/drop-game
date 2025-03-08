@@ -143,16 +143,16 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
     <div
       ref={popupRef}
       style={getPopupStyle()}
-      className="bg-gray-800 text-white rounded-md shadow-lg flex flex-col overflow-hidden border border-gray-700"
+      className="bg-surface text-text rounded-md shadow-lg flex flex-col overflow-hidden border border-border"
     >
       {/* Header */}
       <div
         ref={headerRef}
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-between px-3 py-2 bg-gray-900 cursor-move"
+        className="flex items-center justify-between px-3 py-2 bg-background-secondary cursor-move"
       >
         <div className="flex items-center">
-          <MessageSquare size={16} className="mr-2 text-blue-400" />
+          <MessageSquare size={16} className="mr-2 text-secondary" />
           <span className="font-semibold">
             {isMinimized
               ? `${username} (${userMessages.length})`
@@ -163,7 +163,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
           {isMinimized ? (
             <button
               onClick={() => setIsMinimized(false)}
-              className="text-gray-400 hover:text-white p-1"
+              className="text-text-secondary hover:text-text p-1"
               aria-label="Restore"
             >
               <ChevronUp size={16} />
@@ -171,7 +171,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
           ) : (
             <button
               onClick={() => setIsMinimized(true)}
-              className="text-gray-400 hover:text-white p-1"
+              className="text-text-secondary hover:text-text p-1"
               aria-label="Minimize"
             >
               <Minimize size={16} />
@@ -181,7 +181,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
             (isFullscreen ? (
               <button
                 onClick={() => setIsFullscreen(false)}
-                className="text-gray-400 hover:text-white p-1"
+                className="text-text-secondary hover:text-text p-1"
                 aria-label="Exit fullscreen"
               >
                 <Minimize size={16} />
@@ -189,7 +189,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
             ) : (
               <button
                 onClick={() => setIsFullscreen(true)}
-                className="text-gray-400 hover:text-white p-1"
+                className="text-text-secondary hover:text-text p-1"
                 aria-label="Fullscreen"
               >
                 <Maximize size={16} />
@@ -197,7 +197,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
             ))}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1"
+            className="text-text-secondary hover:text-text p-1"
             aria-label="Close"
           >
             <X size={16} />
@@ -212,12 +212,12 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
           <div className="flex-grow overflow-y-auto p-3 space-y-2">
             {currentMessages.length > 0 ? (
               currentMessages.map((msg) => (
-                <div key={msg.id} className="py-1 border-b border-gray-700">
-                  <div className="text-xs text-gray-400">{formatTime(msg.timestamp)}</div>
+                <div key={msg.id} className="py-1 border-b border-border">
+                  <div className="text-xs text-text-secondary">{formatTime(msg.timestamp)}</div>
                   <div className={`${msg.isAction ? "italic" : ""}`}>
                     {msg.isAction ? (
                       <span>
-                        * <span className="text-blue-400">{msg.nickname}</span> {msg.content}
+                        * <span className="text-primary-light">{msg.nickname}</span> {msg.content}
                       </span>
                     ) : (
                       <span>{msg.content}</span>
@@ -226,7 +226,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
                 </div>
               ))
             ) : (
-              <div className="text-center text-gray-400 py-4">
+              <div className="text-center text-text-secondary py-4">
                 No messages from this user in this channel.
               </div>
             )}
@@ -234,11 +234,11 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
 
           {/* Pagination controls */}
           {totalPages > 1 && (
-            <div className="p-2 bg-gray-900 flex items-center justify-between text-sm">
+            <div className="p-2 bg-background-secondary flex items-center justify-between text-sm">
               <button
                 onClick={goToPrevPage}
                 disabled={currentPage === 1}
-                className="px-2 py-1 rounded bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 py-1 rounded bg-background-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronUp size={16} />
               </button>
@@ -248,7 +248,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
               <button
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages}
-                className="px-2 py-1 rounded bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 py-1 rounded bg-background-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronDown size={16} />
               </button>
@@ -256,7 +256,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
           )}
 
           {/* Info footer */}
-          <div className="p-2 bg-gray-900 text-xs text-gray-400 border-t border-gray-700">
+          <div className="p-2 bg-background-secondary text-xs text-text-secondary border-t border-border">
             {userMessages.length} message{userMessages.length !== 1 ? "s" : ""} • Drag header to
             move • Double-click header to toggle fullscreen
           </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, ReactNode } from "react"
-import { ThemeMode, ThemeContext } from "../hooks/useTheme"
+import { ThemeContext } from "../hooks/useTheme"
+import { ThemeMode } from "../../types/Themes"
 interface ThemeProviderProps {
   children: ReactNode
   defaultTheme?: ThemeMode

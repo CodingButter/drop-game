@@ -103,7 +103,7 @@ const ChatInterface: React.FC = () => {
         username: "system",
         displayName: "System",
         content: `Joined channel ${channel}`,
-        color: "#00FF00",
+        color: "var(--color-success)",
         timestamp: new Date(),
         isCurrentUser: false,
         tags: {},
@@ -131,7 +131,7 @@ const ChatInterface: React.FC = () => {
         username: "system",
         displayName: "System",
         content: `Left channel ${channel}`,
-        color: "#FF0000",
+        color: "var(--color-error)",
         timestamp: new Date(),
         isCurrentUser: false,
         tags: {},
@@ -148,7 +148,7 @@ const ChatInterface: React.FC = () => {
           username: "system",
           displayName: "System",
           content: `${username} joined the channel`,
-          color: "#00FF00",
+          color: "var(--color-success)",
           timestamp: new Date(),
           isCurrentUser: false,
           tags: {},
@@ -166,7 +166,7 @@ const ChatInterface: React.FC = () => {
           username: "system",
           displayName: "System",
           content: `${username} left the channel`,
-          color: "#FF0000",
+          color: "var(--color-error)",
           timestamp: new Date(),
           isCurrentUser: false,
           tags: {},
@@ -212,7 +212,7 @@ const ChatInterface: React.FC = () => {
         username: "system",
         displayName: "System",
         content: `Error: ${error.message}`,
-        color: "#FF0000",
+        color: "var(--color-error)",
         timestamp: new Date(),
         isCurrentUser: false,
         tags: {},
@@ -292,7 +292,7 @@ const ChatInterface: React.FC = () => {
         username: client.getNick() || "butterbot",
         displayName: client.getNick() || "Butterbot",
         content: content,
-        color: "#FF00FF", // Bright color for self messages
+        color: "var(--color-chat-self)", // Using theme variable for self messages
         timestamp: new Date(),
         isCurrentUser: true,
         tags: {},
@@ -314,7 +314,7 @@ const ChatInterface: React.FC = () => {
         content: `Failed to send message: ${
           error instanceof Error ? error.message : String(error)
         }`,
-        color: "#FF0000",
+        color: "var(--color-error)",
         timestamp: new Date(),
         isCurrentUser: false,
         tags: {},
@@ -347,7 +347,7 @@ const ChatInterface: React.FC = () => {
         content: `Failed to join channel: ${
           error instanceof Error ? error.message : String(error)
         }`,
-        color: "#FF0000",
+        color: "var(--color-error)",
         timestamp: new Date(),
         isCurrentUser: false,
         tags: {},
@@ -401,18 +401,18 @@ const ChatInterface: React.FC = () => {
   // Show loading state if client is not yet available
   if (!client) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center p-8 bg-gray-800 rounded-lg">
-          <div className="animate-spin h-12 w-12 border-4 border-t-transparent border-purple-500 rounded-full mx-auto mb-4"></div>
+      <div className="flex items-center justify-center h-screen bg-background text-text">
+        <div className="text-center p-8 bg-surface rounded-lg">
+          <div className="animate-spin h-12 w-12 border-4 border-t-transparent border-primary rounded-full mx-auto mb-4"></div>
           <p className="text-xl">Connecting to IRC server...</p>
-          <p className="text-sm text-gray-400 mt-2">This may take a moment</p>
+          <p className="text-sm text-text-secondary mt-2">This may take a moment</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
+    <div className="flex flex-col h-screen bg-background text-text">
       {/* App header with connection status */}
       <Header
         isConnected={isConnected}

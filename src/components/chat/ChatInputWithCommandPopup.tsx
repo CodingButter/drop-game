@@ -91,7 +91,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
   }
 
   return (
-    <div className="p-4 bg-gray-800 border-t border-gray-700 relative">
+    <div className="p-4 bg-surface border-t border-border relative">
       <form onSubmit={handleSubmit} className="flex space-x-2">
         <div className="relative flex-1">
           <input
@@ -100,27 +100,27 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={`Message ${channelName || "chat"}`}
-            className="w-full px-4 py-3 bg-gray-700 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+            className="w-full px-4 py-3 bg-background-tertiary rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
           />
 
           {/* Command suggestions popup */}
           {showCommands && filteredCommands.length > 0 && (
             <div
               ref={commandsRef}
-              className="absolute bottom-full left-0 w-full bg-gray-800 border border-gray-600 rounded-md shadow-lg mb-1 max-h-60 overflow-y-auto z-10"
+              className="absolute bottom-full left-0 w-full bg-surface border border-border rounded-md shadow-lg mb-1 max-h-60 overflow-y-auto z-10"
             >
               {filteredCommands.map((cmd) => (
                 <div
                   key={cmd.command}
                   onClick={() => selectCommand(cmd.command)}
-                  className="px-3 py-2 hover:bg-gray-700 cursor-pointer flex items-start"
+                  className="px-3 py-2 hover:bg-background-tertiary cursor-pointer flex items-start"
                 >
                   <div className="flex-shrink-0 mr-2 mt-1">
-                    <Command size={14} className="text-purple-400" />
+                    <Command size={14} className="text-primary" />
                   </div>
                   <div>
-                    <div className="font-mono text-purple-400">{cmd.command}</div>
-                    <div className="text-xs text-gray-400">{cmd.description}</div>
+                    <div className="font-mono text-primary">{cmd.command}</div>
+                    <div className="text-xs text-text-secondary">{cmd.description}</div>
                   </div>
                 </div>
               ))}
@@ -130,7 +130,7 @@ const ChatInputWithCommandPopup: React.FC<ChatInputWithCommandPopupProps> = ({
         <button
           type="submit"
           disabled={!message.trim()}
-          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="px-6 py-3 bg-primary hover:bg-primary-dark rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
           <Send size={18} className="mr-2" />
           Send

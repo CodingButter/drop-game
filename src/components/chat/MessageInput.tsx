@@ -29,7 +29,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }
 
   return (
-    <div className="p-4 bg-gray-800 border-t border-gray-700">
+    <div className="p-4 bg-surface border-t border-border">
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -43,13 +43,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
           placeholder={`Message ${currentChannel}`}
-          className="flex-1 px-4 py-3 bg-gray-700 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+          className="flex-1 px-4 py-3 bg-background-tertiary rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
           disabled={!isConnected}
         />
         <button
           type="submit"
           disabled={!isConnected || !messageInput.trim()}
-          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-primary hover:bg-primary-dark rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send
         </button>
