@@ -1,6 +1,8 @@
 import React, { useState, useEffect, ReactNode } from "react"
 import { ThemeContext } from "../hooks/useTheme"
-import { ThemeMode } from "../../types/Themes"
+import { themes, ThemeMode } from "../../types/Themes"
+
+const classList = themes.map((t) => `theme-${t.value}`).join(" ")
 interface ThemeProviderProps {
   children: ReactNode
   defaultTheme?: ThemeMode
@@ -19,13 +21,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   // Apply the theme CSS variables
   useEffect(() => {
     // Remove previous theme classes
-    document.documentElement.classList.remove(
-      "theme-dark",
-      "theme-light",
-      "theme-purple",
-      "theme-blue",
-      "theme-green"
-    )
+    document.documentElement.classList.remove(...classList.split(" "))
 
     // Add current theme class
     document.documentElement.classList.add(`theme-${theme}`)

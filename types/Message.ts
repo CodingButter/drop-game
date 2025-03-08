@@ -27,3 +27,15 @@ export type Message = {
     [key: string]: string | undefined
   }
 }
+
+// Type for third-party emote
+export type ThirdPartyEmote = {
+  type: "emote"
+  code: string
+  url: string
+}
+
+// Type for channel emotes
+export type ChannelEmote = {
+  url: string
+}

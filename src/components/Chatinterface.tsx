@@ -500,7 +500,7 @@ const ChatInterface: React.FC = () => {
     }
   }, [client, channels, currentChannel, loadEmotesForChannel, saveChannelsToLocalStorage])
 
-  // Update the sendMessage function in ChatInterface.tsx
+  // Update the emote handling logic in sendMessage
   const sendMessage = (content: string = messageInput) => {
     if (!content.trim() || !currentChannel || !client) return
 
@@ -510,32 +510,36 @@ const ChatInterface: React.FC = () => {
       // First, send the message to Twitch
       client.sendMessage(currentChannel, content)
 
-      // Parse words and find emotes
+      // Split the message into words
       const words = content.split(/\s+/)
+
+      // Parse words and find emotes with more robust position calculation
       const emotePositions: Record<string, string> = {}
 
-      // Process message to detect emotes (user emotes + common emotes)
-      words.forEach((word) => {
-        // Calculate positions for this word
-        let lastIndex = 0
-        const positions: string[] = []
-
-        while (true) {
-          const startPos = content.indexOf(word, lastIndex)
-          if (startPos === -1) break
-
+      // Helper function to calculate first occurrence of a word
+      const findFirstWordPosition = (word: string) => {
+        const startPos = content.indexOf(word)
+        if (startPos !== -1) {
           const endPos = startPos + word.length - 1
-          positions.push(`${startPos}-${endPos}`)
-          lastIndex = startPos + 1
+          return `${startPos}-${endPos}`
         }
+        return null
+      }
 
+      words.forEach((word: string) => {
         // Check if this word is a user emote
-        if (userEmotes[word] && positions.length > 0) {
-          emotePositions[userEmotes[word]] = positions.join(",")
+        if (userEmotes[word]) {
+          const position = findFirstWordPosition(word)
+          if (position) {
+            emotePositions[userEmotes[word]] = position
+          }
         }
         // Or a predefined emote
-        else if (KNOWN_EMOTES[word] && positions.length > 0) {
-          emotePositions[KNOWN_EMOTES[word]] = positions.join(",")
+        else if (KNOWN_EMOTES[word]) {
+          const position = findFirstWordPosition(word)
+          if (position) {
+            emotePositions[KNOWN_EMOTES[word]] = position
+          }
         }
       })
 
@@ -590,7 +594,6 @@ const ChatInterface: React.FC = () => {
       setMessages((prev) => [...prev, errorMessage])
     }
   }
-
   // Join a new channel
   const joinChannel = () => {
     if (!newChannelInput.trim() || !isConnected || !client) return
@@ -671,13 +674,11 @@ const ChatInterface: React.FC = () => {
       return newChannels
     })
   }
-
-  // Handle username click to show user popup
+  // Update the existing handleUsernameClick method
   const handleUsernameClick = (username: string) => {
     setSelectedUser(username)
     setShowUserPopup(true)
   }
-
   // Close user popup
   const handleCloseUserPopup = () => {
     setShowUserPopup(false)
@@ -686,19 +687,17 @@ const ChatInterface: React.FC = () => {
 
   // Convert messages to the format expected by UserMessagesPopup
   const formatMessagesForUserPopup = (username: string) => {
-    if (!username || !currentChannel) return []
+    if (!username) return []
 
     return messages
-      .filter(
-        (msg) =>
-          msg.channel === currentChannel && msg.username === username && msg.username !== "system"
-      )
+      .filter((msg) => msg.username === username && msg.username !== "system")
       .map((msg) => ({
         id: msg.id,
         nickname: msg.username,
         content: msg.content,
         timestamp: msg.timestamp,
         isAction: msg.content.startsWith("\u0001ACTION"), // Check for /me messages
+        tags: msg.tags, // Include tags for emote parsing
       }))
   }
 
@@ -774,7 +773,6 @@ const ChatInterface: React.FC = () => {
           username={selectedUser}
           messages={formatMessagesForUserPopup(selectedUser)}
           onClose={handleCloseUserPopup}
-          channelName={currentChannel || "#channel"}
         />
       )}
     </div>

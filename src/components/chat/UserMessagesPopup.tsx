@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
-import { X, Minimize, Maximize, ChevronUp, ChevronDown, MessageSquare } from "lucide-react"
+import { X, Minimize, Maximize, ChevronUp, ChevronDown } from "lucide-react"
+import { parseEmotes, getTwitchEmoteUrl, splitMessageWithEmotes } from "../../utils/emoteUtils"
 
 interface Message {
   id: string
@@ -7,45 +8,121 @@ interface Message {
   content: string
   timestamp: Date
   isAction?: boolean
+  tags?: any // Add tags to support emote parsing
 }
 
 interface UserMessagesPopupProps {
   username: string
   messages: Message[]
   onClose: () => void
-  channelName: string
 }
 
-const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
-  username,
-  messages,
-  onClose,
-  channelName,
-}) => {
+const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({ username, messages, onClose }) => {
   const [position, setPosition] = useState({ x: 100, y: 100 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMinimized, setIsMinimized] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const messagesPerPage = 20
+  const [userData, setUserData] = useState<{
+    profileImage?: string
+    displayName?: string
+    userId?: string
+  }>({})
 
+  const messagesPerPage = 20
   const popupRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
 
-  // Filter messages by the selected user
-  const userMessages = messages.filter((msg) => msg.nickname === username)
+  // Render message content with emotes
+  const renderMessageContent = (message: Message) => {
+    // Handle action messages
+    if (message.isAction) {
+      return (
+        <span>
+          * <span className="text-primary-light">{message.nickname}</span> {message.content}
+        </span>
+      )
+    }
 
-  // Calculate total pages for pagination
-  const totalPages = Math.ceil(userMessages.length / messagesPerPage)
+    // Parse Twitch emotes
+    const twEmotes = parseEmotes(message.tags?.emotes, message.content)
 
-  // Get current page messages
-  const currentMessages = userMessages.slice(
-    (currentPage - 1) * messagesPerPage,
-    currentPage * messagesPerPage
-  )
+    // If no emotes, just return plain text
+    if (!twEmotes || twEmotes.length === 0) {
+      return <span>{message.content}</span>
+    }
 
-  // Set up dragging behavior
+    // Split message into parts with emotes
+    const messageParts = splitMessageWithEmotes(message.content, twEmotes)
+
+    return (
+      <p className="break-words flex flex-wrap items-center">
+        {messageParts.map((part: string | (typeof twEmotes)[0], index: number) => {
+          if (typeof part === "string") {
+            return <span key={index}>{part}</span>
+          } else {
+            // It's a Twitch emote
+            return (
+              <img
+                key={`${part.id}-${index}`}
+                src={getTwitchEmoteUrl(part.id, "1.0")}
+                alt={part.code}
+                title={part.code}
+                className="inline-block mx-1 align-middle"
+                width="28"
+                height="28"
+                loading="lazy"
+              />
+            )
+          }
+        })}
+      </p>
+    )
+  }
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const clientId = import.meta.env.VITE_CLIENT_ID
+        const oauth = import.meta.env.VITE_OAUTH_TOKEN
+
+        if (!clientId || !oauth) {
+          console.error("Missing Client ID or OAuth token")
+          return
+        }
+
+        const response = await fetch(`https://api.twitch.tv/helix/users?login=${username}`, {
+          headers: {
+            "Client-ID": clientId,
+            Authorization: `Bearer ${oauth}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error fetching user data: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.data && data.data.length > 0) {
+          const user = data.data[0]
+          setUserData({
+            profileImage: user.profile_image_url,
+            displayName: user.display_name,
+            userId: user.id,
+          })
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error)
+      }
+    }
+
+    fetchUserProfile()
+  }, [username])
+
+  // Dragging logic remains the same as previous implementation
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging && !isFullscreen) {
@@ -72,7 +149,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
     }
   }, [isDragging, dragOffset, isFullscreen])
 
-  // Handle start dragging
+  // Mouse down handler for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     if (headerRef.current && headerRef.current.contains(e.target as Node) && !isFullscreen) {
       setIsDragging(true)
@@ -83,12 +160,7 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
     }
   }
 
-  // Format timestamp
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
-
-  // Next and previous page handlers
+  // Pagination methods
   const goToNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage((prev) => prev + 1)
@@ -101,7 +173,14 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
     }
   }
 
-  // Calculate popup style based on state
+  // Calculate total pages and current page messages
+  const totalPages = Math.ceil(messages.length / messagesPerPage)
+  const currentMessages = messages.slice(
+    (currentPage - 1) * messagesPerPage,
+    currentPage * messagesPerPage
+  )
+
+  // Popup style calculation
   const getPopupStyle = () => {
     if (isFullscreen) {
       return {
@@ -132,8 +211,8 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
       position: "fixed" as const,
       top: `${position.y}px`,
       left: `${position.x}px`,
-      width: "400px",
-      height: "500px",
+      width: "500px",
+      height: "600px",
       transform: "none",
       zIndex: 50,
     }
@@ -145,21 +224,41 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
       style={getPopupStyle()}
       className="bg-surface text-text rounded-md shadow-lg flex flex-col overflow-hidden border border-border"
     >
-      {/* Header */}
+      {/* Header with user info */}
       <div
         ref={headerRef}
         onMouseDown={handleMouseDown}
-        className="flex items-center justify-between px-3 py-2 bg-background-secondary cursor-move"
+        className="relative bg-background-secondary"
       >
-        <div className="flex items-center">
-          <MessageSquare size={16} className="mr-2 text-secondary" />
-          <span className="font-semibold">
-            {isMinimized
-              ? `${username} (${userMessages.length})`
-              : `${username}'s messages in ${channelName}`}
-          </span>
+        {/* Cover photo placeholder - could be fetched from Twitch profile */}
+        {userData.userId && (
+          <div
+            className="w-full h-24 bg-gradient-to-r from-primary to-secondary opacity-70"
+            style={{
+              backgroundImage: `url(https://static-cdn.jtvnw.net/jtv_user_pictures/${userData.userId}-channel_offline_background-1920x1080.png)`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        )}
+
+        {/* Profile picture and username */}
+        <div className="absolute bottom-0 left-4 transform translate-y-1/2 flex items-center">
+          {userData.profileImage && (
+            <img
+              src={userData.profileImage}
+              alt={`${username}'s profile`}
+              className="w-20 h-20 rounded-full border-4 border-surface object-cover"
+            />
+          )}
+          <div className="ml-4">
+            <h2 className="text-xl font-bold text-text">{userData.displayName || username}</h2>
+            <p className="text-text-secondary">@{username}</p>
+          </div>
         </div>
-        <div className="flex items-center space-x-1">
+
+        {/* Popup controls */}
+        <div className="absolute top-2 right-2 flex space-x-1">
           {isMinimized ? (
             <button
               onClick={() => setIsMinimized(false)}
@@ -205,24 +304,21 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
         </div>
       </div>
 
-      {/* Content - only show when not minimized */}
+      {/* Messages content - only show when not minimized */}
       {!isMinimized && (
         <>
           {/* Messages list */}
-          <div className="flex-grow overflow-y-auto p-3 space-y-2">
+          <div className="flex-grow overflow-y-auto p-4 pt-16 space-y-2">
             {currentMessages.length > 0 ? (
               currentMessages.map((msg) => (
                 <div key={msg.id} className="py-1 border-b border-border">
-                  <div className="text-xs text-text-secondary">{formatTime(msg.timestamp)}</div>
-                  <div className={`${msg.isAction ? "italic" : ""}`}>
-                    {msg.isAction ? (
-                      <span>
-                        * <span className="text-primary-light">{msg.nickname}</span> {msg.content}
-                      </span>
-                    ) : (
-                      <span>{msg.content}</span>
-                    )}
+                  <div className="text-xs text-text-secondary">
+                    {msg.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </div>
+                  <div>{renderMessageContent(msg)}</div>
                 </div>
               ))
             ) : (
@@ -254,12 +350,6 @@ const UserMessagesPopup: React.FC<UserMessagesPopupProps> = ({
               </button>
             </div>
           )}
-
-          {/* Info footer */}
-          <div className="p-2 bg-background-secondary text-xs text-text-secondary border-t border-border">
-            {userMessages.length} message{userMessages.length !== 1 ? "s" : ""} • Drag header to
-            move • Double-click header to toggle fullscreen
-          </div>
         </>
       )}
     </div>
