@@ -1,4 +1,5 @@
 import React from "react"
+import { X } from "lucide-react"
 
 interface JoinFormProps {
   newChannelInput: string
@@ -7,6 +8,7 @@ interface JoinFormProps {
   leaveCurrentChannel: () => void
   currentChannel: `#${string}` | null
   isConnected: boolean
+  onClose?: () => void // New prop for handling close in collapsed mode
 }
 
 const JoinForm: React.FC<JoinFormProps> = ({
@@ -16,9 +18,23 @@ const JoinForm: React.FC<JoinFormProps> = ({
   leaveCurrentChannel,
   currentChannel,
   isConnected,
+  onClose,
 }) => {
   return (
     <div className="p-4 border-t border-border bg-surface/50">
+      {/* Close button if onClose is provided */}
+      {onClose && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={onClose}
+            className="text-text-secondary hover:text-text p-1 rounded-full hover:bg-background-tertiary"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="mb-3">
         <div className="flex space-x-2 overflow-hidden">
           <input

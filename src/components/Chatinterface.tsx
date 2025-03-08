@@ -6,6 +6,7 @@ import { generateUniqueId } from "../utils/messageUtils"
 import { useEmotes } from "../hooks/useEmotes"
 import { useLocation } from "react-router-dom"
 import { fetchUsersData } from "../utils/twitchApiUtils"
+import { useSidebarState } from "../hooks/useSidebarState"
 
 // Components
 import ChannelList from "./chat/ChannelList"
@@ -139,37 +140,6 @@ const ChatInterface: React.FC = () => {
       }
     }
   }, [pendingUserFetches])
-
-  // Manual function to join all channels from URL
-  const manualJoinAllChannels = useCallback(() => {
-    if (!client || !isConnected || joinAttemptInProgress) return
-
-    const channelsParam = queryParams.get("channels")
-    if (!channelsParam) return
-
-    setJoinAttemptInProgress(true)
-    console.log("Manually joining all channels from URL parameter:", channelsParam)
-
-    const channelsToJoin = channelsParam
-      .split(",")
-      .map((channel) => channel.trim())
-      .filter((channel) => channel.length > 0)
-      .map((channel) =>
-        channel.startsWith("#") ? (channel as Channel) : (`#${channel}` as Channel)
-      )
-
-    // Join channels with delay
-    channelsToJoin.forEach((channel, index) => {
-      setTimeout(() => {
-        joinChannelSafely(channel).then(() => {
-          // If this is the last channel, clear the flag
-          if (index === channelsToJoin.length - 1) {
-            setJoinAttemptInProgress(false)
-          }
-        })
-      }, index * 1500) // 1.5 second delay between each join
-    })
-  }, [client, isConnected, joinChannelSafely, queryParams, joinAttemptInProgress])
 
   // This effect handles the initial joining of channels from URL parameters
   useEffect(() => {
@@ -592,15 +562,52 @@ const ChatInterface: React.FC = () => {
     }
   }
 
-  // Leave current channel
-  const leaveCurrentChannel = () => {
-    if (!currentChannel || !isConnected || !client) return
+  // Leave a specific channel
+  const leaveChannel = (channelToLeave: Channel) => {
+    if (!isConnected || !client) return
 
     try {
-      client.leave(currentChannel)
+      client.leave(channelToLeave)
+      // The actual channel removal will be handled by the handleLeft event listener
     } catch (error) {
       console.error("Failed to leave channel:", error)
     }
+  }
+
+  // Move a channel up in the list
+  const moveChannelUp = (channelToMove: Channel) => {
+    setChannels((prevChannels) => {
+      const index = prevChannels.indexOf(channelToMove)
+      if (index <= 0) return prevChannels // Already at the top or not found
+
+      const newChannels = [...prevChannels]
+      // Swap the channel with the one above it
+      ;[newChannels[index - 1], newChannels[index]] = [newChannels[index], newChannels[index - 1]]
+
+      // Save the updated order to localStorage
+      saveChannelsToLocalStorage(newChannels)
+
+      return newChannels
+    })
+  }
+
+  // Move a channel down in the list
+  const moveChannelDown = (channelToMove: Channel) => {
+    setChannels((prevChannels) => {
+      const index = prevChannels.indexOf(channelToMove)
+      if (index === -1 || index === prevChannels.length - 1) {
+        return prevChannels // Not found or already at the bottom
+      }
+
+      const newChannels = [...prevChannels]
+      // Swap the channel with the one below it
+      ;[newChannels[index], newChannels[index + 1]] = [newChannels[index + 1], newChannels[index]]
+
+      // Save the updated order to localStorage
+      saveChannelsToLocalStorage(newChannels)
+
+      return newChannels
+    })
   }
 
   // Handle username click to show user popup
@@ -653,6 +660,14 @@ const ChatInterface: React.FC = () => {
     ? "Loading emotes..."
     : connectionStatus
 
+  // Sidebar collapsed state with localStorage persistence
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarState(false)
+
+  // Toggle sidebar
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed)
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background text-text">
       {/* App header with connection status */}
@@ -660,6 +675,8 @@ const ChatInterface: React.FC = () => {
         isConnected={isConnected}
         connectionStatus={statusMessage}
         currentChannel={currentChannel}
+        onToggleSidebar={toggleSidebar}
+        sidebarCollapsed={sidebarCollapsed}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -671,15 +688,15 @@ const ChatInterface: React.FC = () => {
           newChannelInput={newChannelInput}
           setNewChannelInput={setNewChannelInput}
           joinChannel={joinChannel}
-          leaveCurrentChannel={leaveCurrentChannel}
+          leaveChannel={leaveChannel}
+          moveChannelUp={moveChannelUp}
+          moveChannelDown={moveChannelDown}
           isConnected={isConnected}
-          manualJoinAllChannels={manualJoinAllChannels}
-          queryParams={queryParams}
-          joinInProgress={joinAttemptInProgress}
+          collapsed={sidebarCollapsed}
         />
 
         {/* Main chat area */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col transition-all duration-300 ease-in-out">
           {/* Messages area */}
           <MessageList
             messages={messages}

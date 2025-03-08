@@ -1,19 +1,35 @@
 import React from "react"
 import ThemeSwitcher from "../ThemeSwitcher"
 import { Link } from "react-router-dom"
-import { Home } from "lucide-react"
+import { Home, Menu, ChevronsLeft, Hash } from "lucide-react"
 
 interface HeaderProps {
   isConnected: boolean
   connectionStatus: string
   currentChannel: `#${string}` | null
+  onToggleSidebar: () => void
+  sidebarCollapsed: boolean
 }
 
-const Header: React.FC<HeaderProps> = ({ isConnected, connectionStatus, currentChannel }) => {
+const Header: React.FC<HeaderProps> = ({
+  isConnected,
+  connectionStatus,
+  currentChannel,
+  onToggleSidebar,
+  sidebarCollapsed,
+}) => {
   const AppHeader = () => (
     <header className="bg-background-secondary p-4 shadow-lg border-b border-primary/20">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-4">
+          <button
+            onClick={onToggleSidebar}
+            className="text-text-secondary hover:text-primary transition-colors p-1 rounded-md hover:bg-background-tertiary"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? <Menu size={24} /> : <ChevronsLeft size={24} />}
+          </button>
           <Link to="/" className="text-text hover:text-primary transition-colors" title="Home">
             <Home size={24} />
           </Link>
@@ -40,11 +56,9 @@ const Header: React.FC<HeaderProps> = ({ isConnected, connectionStatus, currentC
     if (!currentChannel) return null
 
     return (
-      <div className="bg-background-secondary p-4 border-b border-border">
-        <h2 className="text-xl font-bold flex items-center">
-          <span className="mr-2 text-primary">#</span>
-          {currentChannel.substring(1)}
-        </h2>
+      <div className="bg-background-secondary p-4 border-b border-border flex items-center">
+        <Hash size={18} className="text-primary mr-2" />
+        <h2 className="text-xl font-bold">{currentChannel.substring(1)}</h2>
       </div>
     )
   }
