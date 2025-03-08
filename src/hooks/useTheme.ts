@@ -1,14 +1,14 @@
 import { createContext, useContext } from "react"
 // Define theme types
 export type Theme = "light" | "dark"
+export type ThemeMode = "dark" | "light" | "purple" | "blue" | "green"
 
-export interface ThemeContextType {
-  theme: Theme
-  toggleTheme: () => void
+interface ThemeContextValue {
+  theme: ThemeMode
+  setTheme: (theme: ThemeMode) => void
 }
 
-// Create Theme Context
-export const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
 
 // Custom hook for using theme context
 
