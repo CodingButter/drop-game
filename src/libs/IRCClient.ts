@@ -120,11 +120,28 @@ class IRCClient extends EventEmitter<TwitchEventMap> {
    */
   async join(channel: Channel | Channel[]): Promise<void> {
     const channelsToJoin = Array.isArray(channel) ? channel : [channel]
+
+    // Check if socket exists and is ready
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      await this.connect()
+      console.log("Socket not ready, attempting to connect first...")
+      try {
+        await this.connect()
+      } catch (error) {
+        console.error("Failed to connect:", error)
+        throw new Error(`Cannot join channel, connection failed: ${error}`)
+      }
+
+      // Double-check that connection succeeded
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        throw new Error("Cannot join channel, WebSocket not in OPEN state after connection attempt")
+      }
     }
+
+    // Now that we know socket is open, proceed with joining
     const channelList = channelsToJoin.map((ch) => ch.toLowerCase()).join(",")
-    this.socket!.send(`JOIN ${channelList}`)
+    console.log(`Sending JOIN command for: ${channelList}`)
+    this.socket.send(`JOIN ${channelList}`)
+
     channelsToJoin.forEach((ch) => {
       this.channels.add(ch.toLowerCase() as Channel)
       this.emit("joined", ch)

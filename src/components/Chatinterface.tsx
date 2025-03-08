@@ -1,3 +1,4 @@
+// src/components/Chatinterface.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useIRCClient } from "../hooks/useIRCClient"
 import { Message } from "../../types/Message"
@@ -40,6 +41,8 @@ const ChatInterface: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false)
   const [newChannelInput, setNewChannelInput] = useState("")
   const [connectionStatus, setConnectionStatus] = useState("Connecting...")
+  const [initialChannelsJoined, setInitialChannelsJoined] = useState(false)
+  const [joinAttemptInProgress, setJoinAttemptInProgress] = useState(false)
 
   // User popup state
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
@@ -51,6 +54,7 @@ const ChatInterface: React.FC = () => {
   // Batching system for profile image fetches - fixing the type here
   const [pendingUserFetches, setPendingUserFetches] = useState<UserFetch[]>([])
   const userFetchTimerRef = useRef<number | null>(null)
+  const initialJoinTimeoutRef = useRef<number | null>(null)
 
   // Save channels to localStorage
   const saveChannelsToLocalStorage = useCallback((channelList: Channel[]) => {
@@ -60,6 +64,27 @@ const ChatInterface: React.FC = () => {
       console.error("Failed to save channels to localStorage:", error)
     }
   }, [])
+
+  // Create a separate function to join a channel with better error handling
+  const joinChannelSafely = useCallback(
+    async (channelToJoin: Channel) => {
+      if (!client || !isConnected) {
+        console.log("Cannot join channel - client not available or not connected")
+        return false
+      }
+
+      try {
+        console.log(`Safely joining channel: ${channelToJoin}`)
+        await client.join(channelToJoin)
+        console.log(`Successfully joined: ${channelToJoin}`)
+        return true
+      } catch (error) {
+        console.error(`Error joining channel ${channelToJoin}:`, error)
+        return false
+      }
+    },
+    [client, isConnected]
+  )
 
   // Handle batched profile image fetches
   useEffect(() => {
@@ -115,14 +140,50 @@ const ChatInterface: React.FC = () => {
     }
   }, [pendingUserFetches])
 
-  // Parse channels from query params when client is connected
+  // Manual function to join all channels from URL
+  const manualJoinAllChannels = useCallback(() => {
+    if (!client || !isConnected || joinAttemptInProgress) return
+
+    const channelsParam = queryParams.get("channels")
+    if (!channelsParam) return
+
+    setJoinAttemptInProgress(true)
+    console.log("Manually joining all channels from URL parameter:", channelsParam)
+
+    const channelsToJoin = channelsParam
+      .split(",")
+      .map((channel) => channel.trim())
+      .filter((channel) => channel.length > 0)
+      .map((channel) =>
+        channel.startsWith("#") ? (channel as Channel) : (`#${channel}` as Channel)
+      )
+
+    // Join channels with delay
+    channelsToJoin.forEach((channel, index) => {
+      setTimeout(() => {
+        joinChannelSafely(channel).then(() => {
+          // If this is the last channel, clear the flag
+          if (index === channelsToJoin.length - 1) {
+            setJoinAttemptInProgress(false)
+          }
+        })
+      }, index * 1500) // 1.5 second delay between each join
+    })
+  }, [client, isConnected, joinChannelSafely, queryParams, joinAttemptInProgress])
+
+  // This effect handles the initial joining of channels from URL parameters
   useEffect(() => {
-    if (client && isConnected) {
-      // First try to get channels from URL
+    if (!client || !isConnected || initialChannelsJoined || joinAttemptInProgress) return
+
+    const joinChannelsFromUrl = async () => {
+      setJoinAttemptInProgress(true)
+
+      // Get channels from URL
       const channelsParam = queryParams.get("channels")
       let channelsToJoin: Channel[] = []
 
       if (channelsParam) {
+        console.log("Found channels in URL:", channelsParam)
         // Split by comma and format as channels
         channelsToJoin = channelsParam
           .split(",")
@@ -131,6 +192,8 @@ const ChatInterface: React.FC = () => {
           .map((channel) =>
             channel.startsWith("#") ? (channel as Channel) : (`#${channel}` as Channel)
           )
+
+        console.log("Parsed channels to join:", channelsToJoin)
       }
 
       // If no channels in URL, try to get from localStorage
@@ -139,28 +202,55 @@ const ChatInterface: React.FC = () => {
           const savedChannels = localStorage.getItem("twitchJoinedChannels")
           if (savedChannels) {
             channelsToJoin = JSON.parse(savedChannels)
+            console.log("Using channels from localStorage:", channelsToJoin)
           }
         } catch (error) {
           console.error("Failed to load channels from localStorage:", error)
         }
       }
 
-      // Join each channel if we have any
+      // Join each channel with a delay
       if (channelsToJoin.length > 0) {
-        console.log("Joining channels on startup:", channelsToJoin)
+        console.log("Will join these channels:", channelsToJoin)
+        setInitialChannelsJoined(true) // Mark as joined immediately to prevent duplicate attempts
 
-        // Join channels one by one to ensure they all get processed
-        channelsToJoin.forEach((channel) => {
-          try {
-            console.log(`Attempting to join channel: ${channel}`)
-            client.join(channel)
-          } catch (error) {
-            console.error(`Error joining channel ${channel}:`, error)
-          }
-        })
+        for (let i = 0; i < channelsToJoin.length; i++) {
+          // IIFE to capture the current index
+          ;((index) => {
+            setTimeout(async () => {
+              await joinChannelSafely(channelsToJoin[index])
+
+              // If this is the last channel, clear the flag
+              if (index === channelsToJoin.length - 1) {
+                setJoinAttemptInProgress(false)
+              }
+            }, index * 2000) // 2 second delay between each join
+          })(i)
+        }
+      } else {
+        setJoinAttemptInProgress(false)
       }
     }
-  }, [client, isConnected, queryParams])
+
+    // Wait a bit after connection before joining channels to ensure WebSocket is fully ready
+    initialJoinTimeoutRef.current = window.setTimeout(() => {
+      joinChannelsFromUrl()
+    }, 3000) // Allow 3 seconds for connection to fully establish
+
+    return () => {
+      if (initialJoinTimeoutRef.current) {
+        clearTimeout(initialJoinTimeoutRef.current)
+        initialJoinTimeoutRef.current = null
+      }
+    }
+  }, [
+    client,
+    isConnected,
+    initialChannelsJoined,
+    queryParams,
+    joinChannelSafely,
+    joinAttemptInProgress,
+  ])
 
   useEffect(() => {
     if (!client) {
@@ -225,11 +315,13 @@ const ChatInterface: React.FC = () => {
     }
 
     const handleJoined = (channel: Channel) => {
+      console.log(`Chat interface noticed channel joined: ${channel}`)
       setChannels((prev) => {
         if (!prev.includes(channel)) {
           const newChannels = [...prev, channel]
           // If this is the first channel, set it as current
-          if (newChannels.length === 1) {
+          if (newChannels.length === 1 || !currentChannel) {
+            console.log(`Setting current channel to: ${channel}`)
             setCurrentChannel(channel)
           }
 
@@ -330,22 +422,15 @@ const ChatInterface: React.FC = () => {
       console.log("WebSocket connection opened")
       setIsConnected(true)
       setConnectionStatus("Connected")
-
-      // Force a join when connection opens
-      setTimeout(() => {
-        console.log("Attempting to join #codingbutter")
-        try {
-          client.join("#codingbutter" as Channel)
-        } catch (error) {
-          console.error("Error joining channel:", error)
-        }
-      }, 1000)
     }
 
     const handleClose = () => {
       console.log("WebSocket connection closed")
       setIsConnected(false)
       setConnectionStatus("Disconnected")
+      // Reset initial channels flag so we can rejoin on reconnection
+      setInitialChannelsJoined(false)
+      setJoinAttemptInProgress(false)
     }
 
     const handlePing = (server: string) => {
@@ -483,7 +568,7 @@ const ChatInterface: React.FC = () => {
       : (`#${newChannelInput}` as Channel)
 
     try {
-      client.join(channel)
+      joinChannelSafely(channel)
       setNewChannelInput("")
     } catch (error) {
       console.error("Failed to join channel:", error)
@@ -561,12 +646,19 @@ const ChatInterface: React.FC = () => {
     )
   }
 
+  // Show status message if joining channels is in progress
+  const statusMessage = joinAttemptInProgress
+    ? "Joining channels... This may take a moment"
+    : emoteLoading
+    ? "Loading emotes..."
+    : connectionStatus
+
   return (
     <div className="flex flex-col h-screen bg-background text-text">
       {/* App header with connection status */}
       <Header
         isConnected={isConnected}
-        connectionStatus={emoteLoading ? "Loading emotes..." : connectionStatus}
+        connectionStatus={statusMessage}
         currentChannel={currentChannel}
       />
 
@@ -581,6 +673,9 @@ const ChatInterface: React.FC = () => {
           joinChannel={joinChannel}
           leaveCurrentChannel={leaveCurrentChannel}
           isConnected={isConnected}
+          manualJoinAllChannels={manualJoinAllChannels}
+          queryParams={queryParams}
+          joinInProgress={joinAttemptInProgress}
         />
 
         {/* Main chat area */}

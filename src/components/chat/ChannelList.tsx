@@ -1,3 +1,4 @@
+// src/components/chat/ChannelList.tsx
 import React from "react"
 import JoinForm from "./JoinForm"
 
@@ -10,6 +11,9 @@ interface ChannelListProps {
   joinChannel: () => void
   leaveCurrentChannel: () => void
   isConnected: boolean
+  manualJoinAllChannels?: () => void
+  queryParams?: URLSearchParams
+  joinInProgress?: boolean
 }
 
 const ChannelList: React.FC<ChannelListProps> = ({
@@ -21,6 +25,9 @@ const ChannelList: React.FC<ChannelListProps> = ({
   joinChannel,
   leaveCurrentChannel,
   isConnected,
+  manualJoinAllChannels,
+  queryParams,
+  joinInProgress = false,
 }) => {
   return (
     <aside className="w-64 bg-surface flex flex-col border-r border-primary/20">
@@ -59,6 +66,24 @@ const ChannelList: React.FC<ChannelListProps> = ({
         currentChannel={currentChannel}
         isConnected={isConnected}
       />
+
+      {/* Manual join all channels button */}
+      {queryParams && queryParams.get("channels") && manualJoinAllChannels && (
+        <div className="p-4 pt-0">
+          <button
+            onClick={manualJoinAllChannels}
+            disabled={joinInProgress || !isConnected}
+            className="w-full py-2 px-4 bg-secondary hover:bg-secondary/80 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {joinInProgress ? "Joining..." : "Join All URL Channels"}
+          </button>
+          {joinInProgress && (
+            <p className="text-xs text-text-secondary mt-1 text-center">
+              Please wait while channels are being joined
+            </p>
+          )}
+        </div>
+      )}
     </aside>
   )
 }
