@@ -10,7 +10,7 @@ interface EmotesPickerProps {
 }
 
 const EmotesPicker: React.FC<EmotesPickerProps> = ({ onClose, onSelectEmote, channelName }) => {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState<string>("")
   const [bttvEmotes, setBttvEmotes] = useState<Array<{ id: string; code: string; url: string }>>([])
   const [ffzEmotes, setFfzEmotes] = useState<Array<{ id: string; code: string; url: string }>>([])
   const [activeTab, setActiveTab] = useState<
